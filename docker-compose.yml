@@ -1,0 +1,15 @@
+services:
+  provisioner:
+    build: .
+    volumes:
+      - .:/infra-config:ro
+      # The output directory is mounted as rw so that the provisioner can write
+      # to it.
+      - ./outputs:/infra-config/outputs:rw
+    tmpfs:
+      - /run:exec
+      - /tmp:exec
+    working_dir: /infra-config
+    environment:
+      DRY_RUN: ${DRY_RUN:-}
+    network_mode: host
