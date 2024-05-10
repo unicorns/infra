@@ -41,11 +41,9 @@ SHELL ["/bin/bash", "-c"]
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Install requirements
-RUN apt-get update && apt-get install -y --no-install-recommends git shellcheck rsync tini jq wget sshpass vim openssh-client curl iputils-ping xz-utils python3-pip
+RUN apt-get update && apt-get install -y --no-install-recommends git shellcheck rsync tini jq wget sshpass vim openssh-client curl iputils-ping xz-utils python3-pip unzip
 COPY requirements.txt .
 RUN pip install -r requirements.txt --break-system-packages
-# Requirements for the Ceph Terraform provider
-RUN apt-get update && apt-get install -y --no-install-recommends libcephfs-dev librbd-dev librados-dev
 
 # Install yq
 ARG YQ_VERSION=4.34.1
@@ -73,6 +71,12 @@ RUN wget --quiet https://github.com/derailed/k9s/releases/download/v0.31.8/k9s_L
     && tar -xf /tmp/k9s.tar.gz -C /usr/local/bin k9s \
     && echo "03dbb615e22a0fd74fe0cd3fc4c5c6d9d6bc9ee9060167017043aec1c62fd698 /usr/local/bin/k9s" | sha256sum -c - \
     && rm /tmp/k9s.tar.gz
+
+# Install HashiCorp Vault
+RUN wget --quiet https://releases.hashicorp.com/vault/1.16.2/vault_1.16.2_linux_amd64.zip -O /tmp/vault.zip \
+    && echo "688ce462b70cb674f84fddb731f75bb710db5ad9e4e5a17659e90e1283a8b4b7 /tmp/vault.zip" | sha256sum -c - \
+    && unzip /tmp/vault.zip -d /usr/local/bin vault \
+    && rm /tmp/vault.zip
 
 # Copy Terraform-related files
 COPY --from=godeps /opt/terraform-registry /usr/share/terraform/plugins
