@@ -179,8 +179,3 @@ Thumbs.db
 
 /tmp
 /outputs/**/*.dynamic.yaml
-/outputs/data_scraper_tmp
-
-*.generated.webp
-*.generated.jpg
-*.generated.png

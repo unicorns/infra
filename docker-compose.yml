@@ -10,6 +10,7 @@ services:
       - /run:exec
       - /tmp:exec
     working_dir: /infra-config
+    # init handles singal forwarding so the container can be stopped gracefully.
+    init: true
     environment:
       DRY_RUN: ${DRY_RUN:-}
-    network_mode: host

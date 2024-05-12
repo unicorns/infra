@@ -41,7 +41,7 @@ SHELL ["/bin/bash", "-c"]
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Install requirements
-RUN apt-get update && apt-get install -y --no-install-recommends git shellcheck rsync tini jq wget sshpass vim openssh-client curl iputils-ping xz-utils python3-pip unzip
+RUN apt-get update && apt-get install -y --no-install-recommends git shellcheck rsync jq wget sshpass vim openssh-client curl iputils-ping xz-utils python3-pip unzip
 COPY requirements.txt .
 RUN pip install -r requirements.txt --break-system-packages
 
@@ -115,5 +115,4 @@ RUN echo $'\n\
     directory = *\n\
 ' >> /etc/gitconfig
 
-ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["sleep", "infinity"]

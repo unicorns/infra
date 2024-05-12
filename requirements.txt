@@ -11,3 +11,4 @@ rich>=13.7.0 # pretty print for typer
 pyotp>=2.9.0
 s3cmd>=2.4.0
 azure-data-tables>=12.5.0
+hvac>=2.2.0
