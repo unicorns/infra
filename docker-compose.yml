@@ -14,3 +14,4 @@ services:
     init: true
     environment:
       DRY_RUN: ${DRY_RUN:-}
+      PYTHONPATH: /infra-config

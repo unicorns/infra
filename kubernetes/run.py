@@ -5,16 +5,9 @@
 
 import os
 import subprocess
-import sys
 import tempfile
-from pathlib import Path
 
 import typer
-
-SCRIPT_PATH = Path(__file__)
-BASE_DIR = SCRIPT_PATH.parent.parent
-if str(BASE_DIR) not in sys.path:
-    sys.path.append(str(BASE_DIR))
 
 from vault.vault_utils import get_vault_client
 

@@ -1,7 +1,7 @@
+import importlib
 import json
 import os
 import subprocess
-import sys
 from collections import namedtuple
 from itertools import chain
 from pathlib import Path
@@ -9,13 +9,12 @@ from pathlib import Path
 import hvac
 import typer
 
-SCRIPT_PATH = Path(__file__)
-BASE_DIR = SCRIPT_PATH.parent.parent
-if str(BASE_DIR) not in sys.path:
-    sys.path.append(str(BASE_DIR))
-
+from common.cli_utils import get_app
 from common.utils import deep_equal
 from vault.vault_utils import get_vault_client
+
+SCRIPT_PATH = Path(__file__)
+BASE_DIR = SCRIPT_PATH.parent.parent
 
 ProvisionerEnvironment = namedtuple('ProvisionerEnvironment', [
     'PROV_PROJ_NAME',
@@ -29,7 +28,7 @@ ProvisionerTools = namedtuple('ProvisionerTools', [
     'vault_client',
 ])
 
-def init_environment(script_path: Path, use_terraform: bool = False):
+def init_environment(script_path: Path, use_terraform: bool = False, use_terragrunt: bool = False):
     proj_name = script_path.parent.name
 
     env = ProvisionerEnvironment(
@@ -48,15 +47,26 @@ def init_environment(script_path: Path, use_terraform: bool = False):
     
     vault_client = None
 
-    if use_terraform:
+    if use_terraform or use_terragrunt:
         vault_client = vault_client or get_vault_client()
 
         # This token is created as a user token in the Terraform Cloud UI:
         # https://app.terraform.io/app/settings/tokens
         os.environ["TF_TOKEN_app_terraform_io"] = vault_client.secrets.kv.v2.read_secret('tfcloud')['data']['data']['access_token']
+
+    if use_terraform:
         os.environ["TF_DATA_DIR"] = str(env.PROV_RUN_DIR / '.terraform')
+    
+    if use_terragrunt:
+        # Terragrunt downloads and runs the Terraform project in this directory
+        # https://terragrunt.gruntwork.io/docs/reference/cli-options/#terragrunt-download-dir
+        os.environ["TERRAGRUNT_DOWNLOAD"] = str(env.PROV_RUN_DIR / '.terragrunt-cache')
         
     return ProvisionerTools(env=env, vault_client=vault_client)
+
+############################################
+# Terraform functions
+############################################
 
 def write_terraform_vars(env: ProvisionerEnvironment, vars_dict: dict):
     with open(env.PROV_RUN_DIR / 'terraform.tfvars.json', 'w') as f:
@@ -108,6 +118,113 @@ def run_terraform(tools: ProvisionerTools, vars_dict: dict, additional_init_args
         run_terraform_apply(tools.env, additional_apply_args)
         output = get_terraform_output(tools.env)
         update_output(tools, output, confirm=os.environ.get('NO_CONFIRM') != "true")
+
+############################################
+# Terragrunt functions
+############################################
+
+def run_terragrunt_generic(args = [],  subprocess_args={}):
+    return subprocess.run(
+        ["terragrunt"] + args,
+        check=True,
+        **subprocess_args,
+    )
+
+def run_terragrunt_generic_with_project(env: ProvisionerEnvironment, project: str, command: str, additional_args=[]):
+    if project == "__all__":
+        os.environ["TERRAGRUNT_WORKING_DIR"] = str(env.PROV_CODE_DIR)
+        return run_terragrunt_generic(["run-all", command, "--terragrunt-exclude-dir=_*"] + additional_args)
+    else:
+        os.environ["TERRAGRUNT_WORKING_DIR"] = str(env.PROV_CODE_DIR / project)
+        return run_terragrunt_generic([command] + additional_args)
+
+def write_terragrunt_vars(env: ProvisionerEnvironment, project: str, vars_dict: dict):
+    vars_file = env.PROV_RUN_DIR / project / 'terraform.tfvars.json'
+    vars_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(vars_file, 'w') as f:
+        f.write(json.dumps(vars_dict, indent=2))
+
+def run_terragrunt(
+    tools: ProvisionerTools,
+    project: str,
+    global_vars: dict,
+    project_vars: dict = {},
+    additional_init_args=[],
+    additional_plan_args=[],
+    additional_apply_args=[],
+):
+    """
+    Run Terragrunt with the given project name. When project is an empty string, run Terragrunt on all projects.
+    """
+    write_terragrunt_vars(tools.env, "", global_vars)
+    if project != "__all__":
+        write_terragrunt_vars(tools.env, project, project_vars)
+
+    run_terragrunt_generic_with_project(tools.env, project, "init", additional_init_args)
+
+    if os.environ.get("DRY_RUN"):
+        run_terragrunt_generic_with_project(tools.env, project, "plan", additional_plan_args)
+    else:
+        run_terragrunt_generic_with_project(tools.env, project, "apply", additional_apply_args)
+
+def make_terragrunt_command(script_path, project, package, get_global_vars_fn):
+    """
+    Create a Terragrunt command function for a specific project.
+    """
+
+    def command():
+        tools = init_environment(script_path, use_terragrunt=True)
+
+        global_vars = get_global_vars_fn(tools)
+
+        try:
+            # Support both executing the top-level script directly (python path/to/script.py)
+            # and running it as a package (python -m path.to.script)
+            # - https://stackoverflow.com/a/49480246
+            # - https://stackoverflow.com/a/14132912
+            if package:
+                mod = importlib.import_module(f".{project}.preprovision", package)
+            else:
+                mod = importlib.import_module(f"{project}.preprovision")
+            project_vars = mod.get_vars()
+        except ModuleNotFoundError:
+            project_vars = {}
+
+        run_terragrunt(tools=tools, project=project, global_vars=global_vars, project_vars=project_vars)
+
+    return command
+
+def make_terragrunt_app(script_path: Path, package: str, get_global_vars_fn: callable):
+    """
+    Create a Typer app for provisioning a Terragrunt project.
+    """
+
+    app = get_app()
+
+    projects = [
+        f.parent.name
+        for f in script_path.parent.glob("*/terragrunt.hcl")
+        if not f.parent.name.startswith("_")
+    ]
+
+    for project in projects:
+        # Register projects with Typer
+        app.command(name=project)(make_terragrunt_command(script_path, project, package, get_global_vars_fn))
+
+    @app.command()
+    def all():
+        tools = init_environment(script_path, use_terragrunt=True)
+
+        tf_vars = get_global_vars_fn(tools)
+
+        run_terragrunt(tools=tools, project="__all__", global_vars=tf_vars)
+    
+    return app
+# TODO: terragrunt outputs
+
+############################################
+# Output functions
+############################################
 
 Diff = namedtuple('Diff', ['added', 'removed', 'modified'])
 

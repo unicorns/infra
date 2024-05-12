@@ -143,6 +143,10 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot1" {
   max_count = 3
 }
 
+output "kubernetes_cluster_name" {
+  value = azurerm_kubernetes_cluster.unicorns-aks1.name
+}
+
 output "kube_config" {
   value     = azurerm_kubernetes_cluster.unicorns-aks1.kube_config_raw
   sensitive = true

@@ -34,7 +34,7 @@ def get_app(default_output_format: TyperOutputFormat = TyperOutputFormat.yaml, c
     if print_retval_fn is None:
         print_retval_fn = default_print_retval
 
-    app = typer.Typer(result_callback=print_retval_fn)
+    app = typer.Typer(result_callback=print_retval_fn, no_args_is_help=True)
 
     if callback_fn is None:
         @app.callback()

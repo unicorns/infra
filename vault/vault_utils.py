@@ -1,16 +1,9 @@
 import os
-import sys
 from getpass import getpass
-from pathlib import Path
 
 import hvac
 
-SCRIPT_PATH = Path(__file__)
-BASE_DIR = SCRIPT_PATH.parent.parent
-if str(BASE_DIR) not in sys.path:
-    sys.path.append(str(BASE_DIR))
-
-from common.cli_utils import get_app, TyperOutputFormat
+from common.cli_utils import TyperOutputFormat, get_app
 
 DEFAULT_VAULT_ADDR = "http://localhost:8200"
 

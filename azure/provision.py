@@ -1,8 +1,6 @@
 from pathlib import Path
-import sys
 
 SCRIPT_PATH = Path(__file__)
-sys.path.append(str(SCRIPT_PATH.parent.parent))
 
 from common.provisioner_utils import (
     init_environment,
