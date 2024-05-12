@@ -123,5 +123,12 @@ def get_secret(path, key=""):
 
     return secret
 
+@app.command()
+def delete_secret(path):
+    client = get_vault_client()
+    client.secrets.kv.v2.delete_latest_version_of_secret(path=path)
+
+    return f"Deleted secret at {path}"
+
 if __name__ == "__main__":
     app()

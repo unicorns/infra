@@ -7,6 +7,8 @@ sys.path.append(str(SCRIPT_PATH.parent.parent))
 from common.provisioner_utils import (
     init_environment,
     run_terraform,
+    get_terraform_output,
+    update_output,
 )
 from common.cli_utils import get_app
 
@@ -26,8 +28,7 @@ def all():
         'app_tenant_id': app_secrets['tenant_id'],
     }
 
-    run_terraform(tools.env, tf_vars)
-
+    run_terraform(tools, tf_vars)
 
 if __name__ == "__main__":
     app()
