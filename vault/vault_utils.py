@@ -133,7 +133,7 @@ def get_vault_client(vault_addr: str = None, token: str = None):
     return client
 
 @app.command()
-def list_secrets(path="/"):
+def list_secrets(path: str):
     client = get_vault_client()
     secrets = client.secrets.kv.v2.list_secrets(path=path)['data']['keys']
 

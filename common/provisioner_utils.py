@@ -61,8 +61,6 @@ def init_environment(script_path: Path, use_terraform: bool = False, use_terragr
         # Terragrunt downloads and runs the Terraform project in this directory
         # https://terragrunt.gruntwork.io/docs/reference/cli-options/#terragrunt-download-dir
         os.environ["TERRAGRUNT_DOWNLOAD"] = str(env.PROV_RUN_DIR / '.terragrunt-cache')
-        # Disable auto-init to avoid running Terraform init twice
-        os.environ["TERRAGRUNT_NO_AUTO_INIT"] = "true"
         
     return ProvisionerTools(env=env, vault_client=vault_client)
 

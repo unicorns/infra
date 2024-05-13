@@ -41,3 +41,9 @@ generate variables {
   if_exists = "overwrite_terragrunt"
   contents = file("./_common/variables.tf")
 }
+
+generate locals {
+  path = "common_locals.tf"
+  if_exists = "overwrite_terragrunt"
+  contents = file("./_common/locals.tf")
+}

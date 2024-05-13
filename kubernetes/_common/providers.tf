@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "2.25.2"
     }
+    kubectl = {
+      source  = "alekc/kubectl"
+      version = "2.0.4"
+    }
     helm = {
       source  = "hashicorp/helm"
       version = "2.8.0"
@@ -17,6 +21,10 @@ variable "kube_config_path" {
 }
 
 provider "kubernetes" {
+  config_path = var.kube_config_path
+}
+
+provider "kubectl" {
   config_path = var.kube_config_path
 }
 
