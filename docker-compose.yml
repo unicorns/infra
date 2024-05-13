@@ -2,16 +2,16 @@ services:
   provisioner:
     build: .
     volumes:
-      - .:/infra-config:ro
+      - .:/${COMPOSE_PROJECT_NAME:?}:ro
       # The output directory is mounted as rw so that the provisioner can write
       # to it.
-      - ./outputs:/infra-config/outputs:rw
+      - ./outputs:/${COMPOSE_PROJECT_NAME:?}/outputs:rw
     tmpfs:
       - /run:exec
       - /tmp:exec
-    working_dir: /infra-config
+    working_dir: /${COMPOSE_PROJECT_NAME:?}
     # init handles singal forwarding so the container can be stopped gracefully.
     init: true
     environment:
       DRY_RUN: ${DRY_RUN:-}
-      PYTHONPATH: /infra-config
+      PYTHONPATH: /${COMPOSE_PROJECT_NAME:?}
