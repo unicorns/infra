@@ -7,21 +7,28 @@ import hvac
 from typing_extensions import Annotated
 
 from common.cli_utils import TyperOutputFormat, get_app
+from common.variables import HASHICORP_VAULT_ADDR
 
-DEFAULT_VAULT_ADDR = "http://localhost:8200"
+DEFAULT_VAULT_ADDR = HASHICORP_VAULT_ADDR
 # This file is also used by the vault CLI to cache the token
 VAULT_TOKEN_PATH = Path.home() / ".vault-token"
 
 state = {}
 
+def print_verbose(*args, **kwargs):
+    if state.get("verbose"):
+        print(*args, **kwargs)
+
 def mycallback(
     output_format: TyperOutputFormat = TyperOutputFormat.yaml,
-    vault_addr: str = DEFAULT_VAULT_ADDR,
+    vault_addr: str = None,
     token: str = None,
+    verbose: bool = False,
 ):
     state['output_format'] = output_format
     state['vault_addr'] = vault_addr
     state['token'] = token
+    state['verbose'] = verbose
 
 app = get_app(callback_fn=mycallback)
 
@@ -32,14 +39,18 @@ def get_vault_addr(vault_addr: str = None):
     """
 
     if vault_addr:
+        print_verbose(f"Using Vault address from CLI: {vault_addr}")
         return vault_addr
 
     if state.get('vault_addr'):
+        print_verbose(f"Using Vault address from state: {state['vault_addr']}")
         return state['vault_addr']
     
     if os.environ.get('VAULT_ADDR'):
+        print_verbose(f"Using Vault address from environment: {os.environ['VAULT_ADDR']}")
         return os.environ['VAULT_ADDR']
     
+    print_verbose(f"Using default Vault address: {DEFAULT_VAULT_ADDR}")
     return DEFAULT_VAULT_ADDR
 
 @app.command()
@@ -87,21 +98,25 @@ def get_vault_client(vault_addr: str = None, token: str = None):
         raise Exception(f"Vault at {vault_addr} is sealed. Please unseal it first.")
 
     if token:
+        print_verbose("token from args")
         client.token = token
         if client.is_authenticated():
             return client
 
     if state.get("token"):
+        print_verbose("Trying token from CLI state")
         client.token = state["token"]
         if client.is_authenticated():
             return client
 
     if os.environ.get("VAULT_TOKEN"):
+        print_verbose("Trying token from environment")
         client.token = os.environ["VAULT_TOKEN"]
         if client.is_authenticated():
             return client
 
     if VAULT_TOKEN_PATH.exists():
+        print_verbose("Trying token from cache")
         client.token = VAULT_TOKEN_PATH.read_text()
         if client.is_authenticated():
             return client
@@ -110,6 +125,7 @@ def get_vault_client(vault_addr: str = None, token: str = None):
     assert client.is_authenticated(), f"Failed to authenticate to Vault at {vault_addr}"
 
     # cache the token
+    print(f"Caching token to {VAULT_TOKEN_PATH}")
     VAULT_TOKEN_PATH.write_text(client.token)
 
     return client

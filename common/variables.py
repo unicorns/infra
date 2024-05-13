@@ -1,0 +1,1 @@
+HASHICORP_VAULT_ADDR = "https://vault.benzhang.dev"
