@@ -113,6 +113,7 @@ resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
 
 locals {
   azure_hours_per_month = 730
+  annual_spot_cost_buffer = 6 # dollars, to account for numerical precision errors.
 }
 
 resource "azurerm_kubernetes_cluster_node_pool" "spot2" {
@@ -126,7 +127,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot2" {
   # vm_size = "Standard_D2ads_v5" # 2vCPU, 8GiB RAM, 75 GiB temp disk, 0 GiB cache. Spot price $115.63/year in Sweden Central.
   # vm_size = "Standard_E2as_v5" # Does not support ephemeral OS disk.
   # vm_size = "Standard_B4ms" # 4vCPU, 16GiB RAM, 32 GiB temp disk, 0 GiB cache.
-  vm_size = "Standard_D2pds_v5" # 2vCPU, 8GiB RAM, 75 GiB temp disk, 50 GiB cache. Spot price $72.84/year in Sweden Central.
+  vm_size = "Standard_D2pds_v5" # 2vCPU, 8GiB RAM, 75 GiB temp disk, 50 GiB cache. Spot price $84.096/year in Sweden Central.
 
   os_disk_size_gb = 50
   os_disk_type = "Ephemeral"
@@ -134,7 +135,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot2" {
 
   priority = "Spot"
   eviction_policy = "Delete"
-  spot_max_price = format("%.5f", 115.63	 / 12 / local.azure_hours_per_month) # max price per hour. Rounding because the provider only accepts 5 decimal places.
+  spot_max_price = format("%.5f", (84.096 + local.annual_spot_cost_buffer) / 12 / local.azure_hours_per_month) # max price per hour. Rounding because the provider only accepts 5 decimal places.
   node_taints = [
     "kubernetes.azure.com/scalesetpriority=spot:NoSchedule", # required for spot nodes. 
   ]
