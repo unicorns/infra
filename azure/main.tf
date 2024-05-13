@@ -115,21 +115,22 @@ locals {
   azure_hours_per_month = 730
 }
 
-resource "azurerm_kubernetes_cluster_node_pool" "spot1" {
-  name = "spot1"
+resource "azurerm_kubernetes_cluster_node_pool" "spot2" {
+  name = "spot2"
   kubernetes_cluster_id = azurerm_kubernetes_cluster.unicorns-aks1.id
   # vm_size = "Standard_B2ats_v2" # 2vCPU, 1GiB RAM, does not support ephemeral OS disk. Appears to be unsupported in AKS due to low RAM (node does not start in node pool).
   # vm_size = "Standard_D2as_v5" # 2vCPU, 8GiB RAM, does not support ephemeral OS disk
   # vm_size = "Standard_D2a_v4" # 2vCPU, 8GiB RAM, 50 GiB temp disk, 0 GiB cache.
   # vm_size = "Standard_D2as_v4" # 2vCPU, 8GiB RAM, 16 GiB temp disk, 50 GiB cache.
   # vm_size = "Standard_D4as_v4" # 4vCPU, 16GiB RAM, 32 GiB temp disk, 100 GiB cache.
-  vm_size = "Standard_D2ads_v5" # 2vCPU, 8GiB RAM, 75 GiB temp disk, 0 GiB cache. Spot price $115.63/year in Sweden Central.
+  # vm_size = "Standard_D2ads_v5" # 2vCPU, 8GiB RAM, 75 GiB temp disk, 0 GiB cache. Spot price $115.63/year in Sweden Central.
   # vm_size = "Standard_E2as_v5" # Does not support ephemeral OS disk.
   # vm_size = "Standard_B4ms" # 4vCPU, 16GiB RAM, 32 GiB temp disk, 0 GiB cache.
+  vm_size = "Standard_D2pds_v5" # 2vCPU, 8GiB RAM, 75 GiB temp disk, 50 GiB cache. Spot price $72.84/year in Sweden Central.
 
-  os_disk_size_gb = 75
+  os_disk_size_gb = 50
   os_disk_type = "Ephemeral"
-  # kubelet_disk_type = "Temporary" # use the temp disk for emptyDir volumes. Otherwise, use the OS disk.
+  kubelet_disk_type = "Temporary" # use the temp disk for emptyDir volumes. If not set, use the OS disk.
 
   priority = "Spot"
   eviction_policy = "Delete"
