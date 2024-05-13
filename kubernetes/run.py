@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # This file sets up the kubeconfig file for accessing the kubernetes cluster.
 # Example usage:
 # python3 ./kubernetes/run.py -- k9s --all-namespaces
