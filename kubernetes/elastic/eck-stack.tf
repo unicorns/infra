@@ -77,6 +77,8 @@ resource "kubectl_manifest" "kibana-kb1" {
       }
       "config" = {
         "server.publicBaseUrl" = "https://${var.kibana_host}"
+        # Cluster self-monitoring. Accessible via the "Stack Monitoring" tab in Kibana.
+        "xpack.monitoring.collection.enabled" = true
       }
       "http" = {
         "tls" = {
