@@ -1,8 +1,10 @@
-from pathlib import Path
+import json
 import os
 from getpass import getpass
+from pathlib import Path
 
 import hvac
+from typing_extensions import Annotated
 
 from common.cli_utils import TyperOutputFormat, get_app
 
@@ -128,6 +130,15 @@ def get_secret(path, key=""):
         secret = secret[key]
 
     return secret
+
+@app.command()
+def put_secret(path, data: Annotated[str, "JSON-encoded data"]):
+    secret = json.loads(data)
+
+    client = get_vault_client()
+    client.secrets.kv.v2.create_or_update_secret(path=path, secret=secret)
+
+    return f"Saved secret at {path}"
 
 @app.command()
 def delete_secret(path):

@@ -102,7 +102,7 @@ def run_terraform_apply(env: ProvisionerEnvironment, additional_args=[]):
 
 def get_terraform_output(env: ProvisionerEnvironment, additional_args=[]):
     res = run_terraform_generic(env, "output", ["-json"] + additional_args, subprocess_args={'capture_output': True, 'text': True})
-    
+    assert res.returncode == 0, f"Failed to get Terraform output: {res.stderr}"
     output = json.loads(res.stdout)
 
     return output
@@ -130,13 +130,16 @@ def run_terragrunt_generic(args = [],  subprocess_args={}):
         **subprocess_args,
     )
 
-def run_terragrunt_generic_with_project(env: ProvisionerEnvironment, project: str, command: str, additional_args=[]):
+def run_terragrunt_generic_with_project(env: ProvisionerEnvironment, project: str, command: str, additional_args=[], subprocess_args={}):
+    if not subprocess_args.get('env'):
+        subprocess_args["env"] = os.environ.copy()
+    
     if project == "__all__":
-        os.environ["TERRAGRUNT_WORKING_DIR"] = str(env.PROV_CODE_DIR)
-        return run_terragrunt_generic(["run-all", command, "--terragrunt-exclude-dir=_*"] + additional_args)
+        subprocess_args["env"]["TERRAGRUNT_WORKING_DIR"] = str(env.PROV_CODE_DIR)
+        return run_terragrunt_generic(["run-all", command, "--terragrunt-exclude-dir=_*"] + additional_args, subprocess_args=subprocess_args)
     else:
-        os.environ["TERRAGRUNT_WORKING_DIR"] = str(env.PROV_CODE_DIR / project)
-        return run_terragrunt_generic([command] + additional_args)
+        subprocess_args["env"]["TERRAGRUNT_WORKING_DIR"] = str(env.PROV_CODE_DIR / project)
+        return run_terragrunt_generic([command] + additional_args, subprocess_args=subprocess_args)
 
 def write_terragrunt_vars(env: ProvisionerEnvironment, project: str, vars_dict: dict):
     vars_file = env.PROV_RUN_DIR / project / 'terraform.tfvars.json'
@@ -147,25 +150,33 @@ def write_terragrunt_vars(env: ProvisionerEnvironment, project: str, vars_dict: 
 def run_terragrunt(
     tools: ProvisionerTools,
     project: str,
-    global_vars: dict,
-    project_vars: dict = {},
     additional_init_args=[],
     additional_plan_args=[],
     additional_apply_args=[],
 ):
     """
-    Run Terragrunt with the given project name. When project is an empty string, run Terragrunt on all projects.
+    Run Terragrunt with the given project name. When `project` is `__all__`, run Terragrunt on all projects.
     """
-    write_terragrunt_vars(tools.env, "", global_vars)
-    if project != "__all__":
-        write_terragrunt_vars(tools.env, project, project_vars)
-
     run_terragrunt_generic_with_project(tools.env, project, "init", additional_init_args)
 
     if os.environ.get("DRY_RUN"):
         run_terragrunt_generic_with_project(tools.env, project, "plan", additional_plan_args)
     else:
         run_terragrunt_generic_with_project(tools.env, project, "apply", additional_apply_args)
+
+def import_preprovision_module(project: str, package: str):
+    try:
+        # Support both executing the top-level script directly (python path/to/script.py)
+        # and running it as a package (python -m path.to.script)
+        # - https://stackoverflow.com/a/49480246
+        # - https://stackoverflow.com/a/14132912
+        if package:
+            mod = importlib.import_module(f".{project}.preprovision", package)
+        else:
+            mod = importlib.import_module(f"{project}.preprovision")
+        return mod
+    except ModuleNotFoundError:
+        return None
 
 def make_terragrunt_command(script_path, project, package, get_global_vars_fn):
     """
@@ -174,23 +185,19 @@ def make_terragrunt_command(script_path, project, package, get_global_vars_fn):
 
     def command():
         tools = init_environment(script_path, use_terragrunt=True)
+        write_terragrunt_vars(tools.env, "", get_global_vars_fn(tools))
 
-        global_vars = get_global_vars_fn(tools)
+        mod = import_preprovision_module(project, package)
+        if mod:
+            write_terragrunt_vars(tools.env, project, mod.get_vars(tools, project))
 
-        try:
-            # Support both executing the top-level script directly (python path/to/script.py)
-            # and running it as a package (python -m path.to.script)
-            # - https://stackoverflow.com/a/49480246
-            # - https://stackoverflow.com/a/14132912
-            if package:
-                mod = importlib.import_module(f".{project}.preprovision", package)
-            else:
-                mod = importlib.import_module(f"{project}.preprovision")
-            project_vars = mod.get_vars()
-        except ModuleNotFoundError:
-            project_vars = {}
+        run_terragrunt(tools=tools, project=project)
 
-        run_terragrunt(tools=tools, project=project, global_vars=global_vars, project_vars=project_vars)
+        # Get output
+        res = run_terragrunt_generic_with_project(tools.env, project, "output", ["-json"], subprocess_args={'capture_output': True, 'text': True})
+        assert res.returncode == 0, f"Failed to get Terragrunt output for project '{project}': {res.stderr}"
+        output = json.loads(res.stdout)
+        update_output(tools, output, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=os.environ.get("NO_CONFIRM") != "true")
 
     return command
 
@@ -214,13 +221,39 @@ def make_terragrunt_app(script_path: Path, package: str, get_global_vars_fn: cal
     @app.command()
     def all():
         tools = init_environment(script_path, use_terragrunt=True)
+        write_terragrunt_vars(tools.env, "", get_global_vars_fn(tools))
 
-        tf_vars = get_global_vars_fn(tools)
+        # write vars for each project
+        for project in projects:
+            mod = import_preprovision_module(project, package)
+            if mod:
+                write_terragrunt_vars(tools.env, project, mod.get_vars(tools, project))
 
-        run_terragrunt(tools=tools, project="__all__", global_vars=tf_vars)
-    
+        run_terragrunt(tools=tools, project="__all__")
+
+        outputs = {}
+        diffs = {}
+
+        # Get output
+        for project in projects:
+            print(f"Getting output for project '{project}'...")
+            res = run_terragrunt_generic_with_project(tools.env, project, "output", ["-json"], subprocess_args={'capture_output': True, 'text': True})
+            assert res.returncode == 0, f"Failed to get Terragrunt output for project '{project}': {res.stderr}"
+            output = json.loads(res.stdout)
+            outputs[project] = output
+            diff = update_output(tools, output, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", dry_run=True)
+            if diff:
+                diffs[project] = diff
+        
+        if len(diffs) > 0:
+            if os.environ.get("NO_CONFIRM") != "true":
+                typer.confirm("Do you want to apply the changes?", abort=True)
+            
+            for project, diff in diffs.items():
+                print(f"Applying output changes for project '{project}'...")
+                update_output(tools, outputs[project], subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=False)
+
     return app
-# TODO: terragrunt outputs
 
 ############################################
 # Output functions
@@ -280,9 +313,12 @@ def print_diff(diff: Diff):
     else:
         print("  Modified: None")
 
-def update_output(tools: ProvisionerTools, output: dict, confirm: bool = True):
+def update_output(tools: ProvisionerTools, output: dict, subpath: str = None, confirm: bool = True, dry_run: bool = False):
+    if not subpath:
+        subpath = tools.env.PROV_PROJ_NAME
+
     try:
-        existing_output = tools.vault_client.secrets.kv.v2.read_secret(f'outputs/{tools.env.PROV_PROJ_NAME}')['data']['data']
+        existing_output = tools.vault_client.secrets.kv.v2.read_secret(f'outputs/{subpath}')['data']['data']
     except hvac.exceptions.InvalidPath:
         existing_output = {}
 
@@ -290,16 +326,21 @@ def update_output(tools: ProvisionerTools, output: dict, confirm: bool = True):
 
     if not diff.added and not diff.removed and not diff.modified:
         print("No changes to output")
-        return
+        return None
 
     print_diff(diff)
-    
+
+    if dry_run:
+        return diff
+
     if confirm:
         typer.confirm("Do you want to update the output?", abort=True)
 
     print("Applying output changes...")
 
     tools.vault_client.secrets.kv.v2.create_or_update_secret(
-        path=f"outputs/{tools.env.PROV_PROJ_NAME}",
+        path=f"outputs/{subpath}",
         secret=dict(output),
     )
+
+    return diff
