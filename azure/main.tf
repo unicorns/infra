@@ -113,7 +113,7 @@ resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
 
 locals {
   azure_hours_per_month = 730
-  annual_spot_cost_buffer = 6 # dollars, to account for numerical precision errors.
+  annual_spot_cost_buffer = 20 # dollars, to account for fluctuations in spot prices and numerical precision errors.
 }
 
 resource "azurerm_kubernetes_cluster_node_pool" "spot2" {
