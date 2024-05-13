@@ -39,8 +39,18 @@ resource "helm_release" "tailscale" {
   ]
 }
 
-output "test-output" {
-  value = {
-    namespace = kubernetes_namespace.tailscale.metadata[0].name
+resource "kubernetes_manifest" "tailscale-exit-node" {
+  manifest = {
+    "apiVersion" = "tailscale.com/v1alpha1"
+    "kind" = "Connector"
+    "metadata" = {
+      "name" = "tailscale-exit-node"
+    }
+    "spec" = {
+      "hostname" = "${var.kubernetes_cluster_name}-exit-node"
+      "exitNode" = true
+    }
   }
+
+  depends_on = [ helm_release.tailscale ]
 }
