@@ -1,3 +1,4 @@
+from pathlib import Path
 import os
 from getpass import getpass
 
@@ -6,6 +7,8 @@ import hvac
 from common.cli_utils import TyperOutputFormat, get_app
 
 DEFAULT_VAULT_ADDR = "http://localhost:8200"
+# This file is also used by the vault CLI to cache the token
+VAULT_TOKEN_PATH = Path.home() / ".vault-token"
 
 state = {}
 
@@ -38,29 +41,11 @@ def get_vault_addr(vault_addr: str = None):
     return DEFAULT_VAULT_ADDR
 
 @app.command()
-def get_token(token: str = None):
-    """
-    Get the Vault token from various sources.
-    """
-
-    if token:
-        return token
-
-    if state.get('token'):
-        return state['token']
-    
-    if os.environ.get('VAULT_TOKEN'):
-        return os.environ['VAULT_TOKEN']
-    
-    return getpass("Please enter your Vault token (will be hidden): ")
-
-@app.command()
 def unseal(keys: list[str]):
     vault_addr = get_vault_addr()
 
     client = hvac.Client(url=vault_addr)
-    for key in keys:
-        client.sys.submit_unseal_key(key=key)
+    client.sys.submit_unseal_keys(keys)
     
     return {
         "is_sealed": client.sys.is_sealed(),
@@ -92,10 +77,38 @@ def snapshot(dest: str):
 
 def get_vault_client(vault_addr: str = None, token: str = None):
     vault_addr = get_vault_addr(vault_addr)
-    token = get_token(token)
 
-    client = hvac.Client(url=vault_addr, token=token)
+    client = hvac.Client(url=vault_addr)
+    if not client.sys.is_initialized():
+        raise Exception(f"Vault at {vault_addr} is not initialized. Please initialize it first.")
+    if client.sys.is_sealed():
+        raise Exception(f"Vault at {vault_addr} is sealed. Please unseal it first.")
+
+    if token:
+        client.token = token
+        if client.is_authenticated():
+            return client
+
+    if state.get("token"):
+        client.token = state["token"]
+        if client.is_authenticated():
+            return client
+
+    if os.environ.get("VAULT_TOKEN"):
+        client.token = os.environ["VAULT_TOKEN"]
+        if client.is_authenticated():
+            return client
+
+    if VAULT_TOKEN_PATH.exists():
+        client.token = VAULT_TOKEN_PATH.read_text()
+        if client.is_authenticated():
+            return client
+
+    client.token = getpass("Please enter your Vault token (will be hidden): ")
     assert client.is_authenticated(), f"Failed to authenticate to Vault at {vault_addr}"
+
+    # cache the token
+    VAULT_TOKEN_PATH.write_text(client.token)
 
     return client
 
