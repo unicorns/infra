@@ -176,6 +176,8 @@ resource "kubectl_manifest" "kibana-kb1" {
       }
       "config" = {
         "server.publicBaseUrl" = "https://${var.kibana_host}"
+        # Cluster self-monitoring. Accessible via the "Stack Monitoring" tab in Kibana. This is deprecated, but it's much easier to set up than metricbeat.
+        "xpack.monitoring.collection.enabled" = true
         # Monitoring configuration: https://github.com/elastic/cloud-on-k8s/blob/9dd6dfce933f811cfc307b14c0d2c60cb45c5fe0/config/recipes/elastic-agent/fleet-kubernetes-integration.yaml#L11-L21
         "xpack.fleet.agents.elasticsearch.hosts": ["http://${yamldecode(kubectl_manifest.elasticsearch-es1.yaml_body).metadata.name}-es-http.${kubernetes_namespace.elastic-stack.metadata[0].name}.svc.cluster.local:9200"]
         "xpack.fleet.agents.fleet_server.hosts": ["http://${local.es1_fleet_server_name}-agent-http.${kubernetes_namespace.elastic-stack.metadata[0].name}.svc.cluster.local:8220"]
