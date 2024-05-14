@@ -87,6 +87,9 @@ resource "kubectl_manifest" "elasticsearch-es1" {
           }
         }
       }
+      # Don't delete the volume when the cluster is deleted. This is useful for retaining data when we do a reprovision.
+      # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html#k8s_controlling_volume_claim_deletion
+      "volumeClaimDeletePolicy" = "DeleteOnScaledownOnly"
       "nodeSets" = [
         {
           "count" = 1
@@ -125,7 +128,10 @@ resource "kubectl_manifest" "elasticsearch-es1" {
                 "name" = "elasticsearch-data"
               }
               "spec" = {
-                "accessModes" = ["ReadWriteOnce"]
+                # ReadWriteOnce means the volume can be mounted as read-write by a single node. We will get a volume attachment error if the node goes away (e.g. due to a spot instance eviction).
+                # ReadWriteMany means the volume can be mounted as read-write by many nodes.
+                # https://stackoverflow.com/a/74456808
+                "accessModes" = ["ReadWriteMany"]
                 "resources" = {
                   "requests" = {
                     "storage" = "6Gi"
