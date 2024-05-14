@@ -57,6 +57,14 @@ resource "vault_policy" "base-user" {
       capabilities = ["read"]
     }
 
+    # Allow the user to read and write to their own secrets
+    path "secret/data/sandbox/{{identity.entity.aliases.${vault_auth_backend.userpass.accessor}.name}}/*" {
+      capabilities = ["create", "read", "update", "patch", "delete"]
+    }
+    path "secret/metadata/sandbox/{{identity.entity.aliases.${vault_auth_backend.userpass.accessor}.name}}/*" {
+      capabilities = ["list", "delete"]
+    }
+
     # Allow updating the user's own password using the users/<username> endpoint
     # https://discuss.hashicorp.com/t/a-way-to-allow-a-user-to-change-its-own-password/36555/2
     # https://stackoverflow.com/a/60766959
