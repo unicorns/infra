@@ -128,10 +128,7 @@ resource "kubectl_manifest" "elasticsearch-es1" {
                 "name" = "elasticsearch-data"
               }
               "spec" = {
-                # ReadWriteOnce means the volume can be mounted as read-write by a single node. We will get a volume attachment error if the node goes away (e.g. due to a spot instance eviction).
-                # ReadWriteMany means the volume can be mounted as read-write by many nodes.
-                # https://stackoverflow.com/a/74456808
-                "accessModes" = ["ReadWriteMany"]
+                "accessModes" = ["ReadWriteOnce"]
                 "resources" = {
                   "requests" = {
                     "storage" = "4Gi"
