@@ -455,33 +455,23 @@ resource "kubectl_manifest" "es1-elastic-agent" {
               runAsUser: 0
             tolerations: ${jsonencode(local.azure_spot_node_tolerations)}
 
-            # Mount the necessary directories for the agent to read logs
+            # Mount the necessary directories for the agent to read logs.
             # References:
             # - https://github.com/elastic/cloud-on-k8s/issues/3201#issuecomment-695993095
             # - https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration-examples.html#k8s_custom_logs_integration_with_autodiscover
             #   - https://raw.githubusercontent.com/elastic/cloud-on-k8s/2.13/config/recipes/elastic-agent/fleet-custom-logs-integration.yaml
             # - https://raw.githubusercontent.com/elastic/elastic-agent/8.13/deploy/kubernetes/elastic-agent-managed-kubernetes.yaml
+            # Mounting /var/log directly mixes logs from the agent and the host, but the agent doesn't appear to have conflicting log files,
+            # so it should be fine. This is similar to running the agent on the host directly.
+            # The kubernetes and system integrations default to reading directly from /var/log anyway.
             containers:
             - name: agent
               volumeMounts:
-              - mountPath: /var/lib/docker/containers
-                name: varlibdockercontainers
-                readOnly: true
-              - mountPath: /var/log/containers
-                name: varlogcontainers
-                readOnly: true
-              - mountPath: /var/log/pods
-                name: varlogpods
-                readOnly: true
+              - mountPath: /var/log
+                name: varlog
             volumes:
-            - name: varlibdockercontainers
+            - name: varlog
               hostPath:
-                path: /var/lib/docker/containers
-            - name: varlogcontainers
-              hostPath:
-                path: /var/log/containers
-            - name: varlogpods
-              hostPath:
-                path: /var/log/pods
+                path: /var/log
     EOF
 }
