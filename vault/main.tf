@@ -88,13 +88,16 @@ resource "vault_generic_endpoint" "test-user" {
   path = "auth/${vault_auth_backend.userpass.path}/users/test-user"
   ignore_absent_fields = true
 
-  # This is only updated when the input data changes. User changes like password updates
-  # via the vault api are not tracked by Terraform.
-  # However, even with a non-password change here, the current password will be overwritten.
   data_json = jsonencode({
     policies = [vault_policy.base-user.name]
     password = random_password.test-user-password.result
   })
+
+  lifecycle {
+    # Ignore changes in data_json because any changes will revert the password to the
+    # one set here (user password changes will be overwritten).
+    ignore_changes = [ data_json ]
+  }
 }
 
 output "test-user-password" {
