@@ -185,7 +185,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot4" {
   ]
 
   enable_auto_scaling = true
-  min_count = 0
+  min_count = 1
   max_count = 2
 
   lifecycle {
