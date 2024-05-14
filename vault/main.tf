@@ -72,6 +72,9 @@ resource "vault_policy" "base-user" {
     # https://github.com/hashicorp/vault/issues/6590#issuecomment-531974848
     path "auth/${vault_auth_backend.userpass.path}/users/{{identity.entity.aliases.${vault_auth_backend.userpass.accessor}.name}}/password" {
       capabilities = [ "update" ]
+      allowed_parameters = {
+        "password" = []
+      }
     }
     EOF
 }
