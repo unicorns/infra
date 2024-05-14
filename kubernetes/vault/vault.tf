@@ -47,12 +47,6 @@ resource "helm_release" "vault" {
             }
             EOF
         }
-        "auditStorage" : {
-          # Note: auditing needs to be enabled separately.
-          # https://github.com/hashicorp/vault-helm/blob/72fd0bde9592b23dfb26686070806b22ce6567d8/values.yaml#L790-L794
-          "enabled" : "true"
-          "size" : "2Gi"
-        },
         "ingress" : {
           "enabled" : true,
           "ingressClassName" : "nginx",

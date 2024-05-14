@@ -23,6 +23,15 @@ provider "vault" {
   address = var.vault_address
 }
 
+# write audit logs to stdout: https://developer.hashicorp.com/vault/docs/audit/file#stdout
+resource "vault_audit" "stdout" {
+  type = "file"
+
+  options = {
+    file_path = "stdout"
+  }
+}
+
 resource "vault_auth_backend" "userpass" {
   type = "userpass"
 
