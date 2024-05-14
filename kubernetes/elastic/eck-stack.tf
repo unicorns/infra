@@ -99,9 +99,41 @@ resource "kubectl_manifest" "elasticsearch-es1" {
                   "name" = "max-map-count-check"
                 },
               ]
-              "tolerations" = local.azure_spot_node_tolerations
+              "tolerations" = local.azure_spot_node_tolerations,
+              "containers" = [
+                {
+                  "name" = "elasticsearch"
+                  # Reference:
+                  # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-managing-compute-resources.html#k8s-compute-resources
+                  "resources" = {
+                    "limits" = {
+                      "memory" = "4Gi"
+                    }
+                    "requests" = {
+                      "memory" = "2Gi"
+                    }
+                  }
+                }
+              ]
             }
           }
+          # Reference:
+          # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html#k8s-volume-claim-templates
+          "volumeClaimTemplates" = [
+            {
+              "metadata" = {
+                "name" = "elasticsearch-data"
+              }
+              "spec" = {
+                "accessModes" = ["ReadWriteOnce"]
+                "resources" = {
+                  "requests" = {
+                    "storage" = "6Gi"
+                  }
+                }
+              }
+            }
+          ]
         },
       ]
       "version" = "8.13.4"
@@ -177,7 +209,7 @@ resource "kubectl_manifest" "kibana-kb1" {
       "config" = {
         "server.publicBaseUrl" = "https://${var.kibana_host}"
         # Cluster self-monitoring. Accessible via the "Stack Monitoring" tab in Kibana. This is deprecated, but it's much easier to set up than metricbeat.
-        "xpack.monitoring.collection.enabled" = true
+        "xpack.monitoring.collection.enabled" = "true"
         # Monitoring configuration: https://github.com/elastic/cloud-on-k8s/blob/9dd6dfce933f811cfc307b14c0d2c60cb45c5fe0/config/recipes/elastic-agent/fleet-kubernetes-integration.yaml#L11-L21
         "xpack.fleet.agents.elasticsearch.hosts": ["http://${yamldecode(kubectl_manifest.elasticsearch-es1.yaml_body).metadata.name}-es-http.${kubernetes_namespace.elastic-stack.metadata[0].name}.svc.cluster.local:9200"]
         "xpack.fleet.agents.fleet_server.hosts": ["http://${local.es1_fleet_server_name}-agent-http.${kubernetes_namespace.elastic-stack.metadata[0].name}.svc.cluster.local:8220"]
