@@ -6,6 +6,7 @@ from getpass import getpass
 from pathlib import Path
 
 import hvac
+import typer
 from typing_extensions import Annotated
 
 from common.cli_utils import TyperOutputFormat, get_app
@@ -123,7 +124,9 @@ def get_vault_client(vault_addr: str = None, token: str = None):
         if client.is_authenticated():
             return client
 
-    client.token = getpass("Please enter your Vault token (will be hidden): ")
+    username = typer.prompt("Please enter your Vault username")
+    password = getpass("Please enter your Vault password (will be hidden): ")
+    client.auth.userpass.login(username=username, password=password)
     assert client.is_authenticated(), f"Failed to authenticate to Vault at {vault_addr}"
 
     # cache the token
