@@ -57,7 +57,7 @@ resource "vault_policy" "base-user" {
       capabilities = ["read"]
     }
 
-    # Allow the user to read and write to their own secrets
+    # Give users access to sandboxes where they have full control
     path "secret/data/sandbox/{{identity.entity.aliases.${vault_auth_backend.userpass.accessor}.name}}/*" {
       capabilities = ["create", "read", "update", "patch", "delete"]
     }
