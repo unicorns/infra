@@ -1,0 +1,20 @@
+name: Provision
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  merge_group:
+  workflow_dispatch:
+
+concurrency: provision_concurrency_group-${{ github.event.pull_request.number || github.ref_name }}
+
+jobs:
+  test-docker-cache:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+    - name: Test Docker cache
+      run: |
+        docker compose build provisioner
