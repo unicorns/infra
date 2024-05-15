@@ -23,8 +23,8 @@ jobs:
         with:
           exportToken: true
           method: jwt
-          url: ${{ env.VAULT_ADDR }}
-          role: ${{ github.ref_name == 'main' && env.VAULT_ROLE_RW || env.VAULT_ROLE_RO }}
+          url: ${{ vars.VAULT_ADDR }}
+          role: ${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}
       - name: Checkout repository
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with:
@@ -78,8 +78,8 @@ jobs:
         with:
           exportToken: true
           method: jwt
-          url: ${{ env.VAULT_ADDR }}
-          role: ${{ github.ref_name == 'main' && env.VAULT_ROLE_RW || env.VAULT_ROLE_RO }}
+          url: ${{ vars.VAULT_ADDR }}
+          role: ${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}
       - name: Checkout repository
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with: {}
