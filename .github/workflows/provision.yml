@@ -77,7 +77,7 @@ jobs:
           fi
       - name: Dummy test
         run: |
-          docker compose run provisioner echo 123
+          docker compose run provisioner env
   all-good:
     needs:
       - dummy-test
