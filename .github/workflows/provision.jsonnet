@@ -2,10 +2,11 @@
 
 local utils = import '../../common/utils.libsonnet';
 
-local common_init_steps = [
+local common_init_steps(actions_checkout_options={}) = [
   {
     name: 'Checkout repository',
     uses: 'actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b',  // v4.1.4
+    with: actions_checkout_options,
   },
   {
     // This sets up the docker-container driver, which has more features like registry cache export
@@ -66,14 +67,15 @@ local make_provision_job(name, provisioner_command, dependencies=[], create_pr_o
     needs: std.map(utils.slugify, dependencies),
     'runs-on': 'ubuntu-latest',
     [if create_pr_on_change then "permissions"]: {
-      // required for pushing to the repo
-      contents: 'write',
       // required for creating pull requests
       'pull-requests': 'write',
-      // required for updating workflow files
-      workflows: 'write',
     },
-    steps: common_init_steps + [
+    steps: common_init_steps(
+      // This is required because normal GITHUB_TOKEN does not have workflow permissions
+      // https://github.com/orgs/community/discussions/35410#discussioncomment-7645702
+      // https://github.com/peter-evans/create-pull-request/blob/15410bdb79bc0f69a005c1c860378ed08968f998/docs/concepts-guidelines.md?plain=1#L188
+      actions_checkout_options=(if create_pr_on_change then {"ssh-key": "${{ secrets.DEPLOY_KEY }}" } else {}),
+    ) + [
       {
         name: name,
         run: provisioner_command,
