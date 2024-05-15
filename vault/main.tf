@@ -53,7 +53,7 @@ resource "vault_policy" "provisioner-ro" {
 }
 
 # The provisioner-rw policy allows read access to all secrets
-# and write access to the outputs.
+# and write access to the outputs and states (for backup) paths.
 resource "vault_policy" "provisioner-rw" {
   name   = "provisioner-rw"
 
@@ -63,6 +63,10 @@ resource "vault_policy" "provisioner-rw" {
     }
 
     path "secret/data/outputs/*" {
+      capabilities = ["create", "read", "update"]
+    }
+
+    path "secret/data/states/*" {
       capabilities = ["create", "read", "update"]
     }
     EOF
