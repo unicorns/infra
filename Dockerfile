@@ -42,8 +42,6 @@ ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Install requirements
 RUN apt-get update && apt-get install -y --no-install-recommends git shellcheck rsync jq wget sshpass vim openssh-client curl iputils-ping xz-utils python3-pip unzip
-COPY requirements.txt .
-RUN pip install -r requirements.txt --break-system-packages
 
 # Install yq
 ARG YQ_VERSION=4.34.1
@@ -77,6 +75,10 @@ RUN wget --quiet https://releases.hashicorp.com/vault/1.16.2/vault_1.16.2_linux_
     && echo "688ce462b70cb674f84fddb731f75bb710db5ad9e4e5a17659e90e1283a8b4b7 /tmp/vault.zip" | sha256sum -c - \
     && unzip /tmp/vault.zip -d /usr/local/bin vault \
     && rm /tmp/vault.zip
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install -r requirements.txt --break-system-packages
 
 # Copy Terraform-related files
 COPY --from=godeps /opt/terraform-registry /usr/share/terraform/plugins
