@@ -69,7 +69,7 @@ resource github_branch_protection infra-main {
   require_conversation_resolution = true
   required_status_checks {
     strict = true
-    contexts = [ "update-workflow" ]
+    contexts = [ "all-good" ]
   }
 
   required_pull_request_reviews {

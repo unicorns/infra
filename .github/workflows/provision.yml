@@ -77,4 +77,17 @@ jobs:
           fi
       - name: Dummy test
         run: |
-          docker compose run provisioner env
+          docker compose run provisioner echo 123
+  all-good:
+    needs:
+      - dummy-test
+      - update-workflow
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+        name: Print success message if all jobs are successful
+        run: echo 'All good!'
+      - if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        name: Fail the job if one or more jobs failed
+        run: echo 'One or more jobs failed.' && exit 1
