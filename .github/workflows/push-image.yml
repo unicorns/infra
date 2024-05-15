@@ -48,4 +48,5 @@ jobs:
             DOCKER_METADATA_OUTPUT_JSON
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-to: type=inline
+          # Cache to registry: https://docs.docker.com/build/ci/github-actions/cache/#registry-cache
+          cache-to: type=registry,ref=${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
