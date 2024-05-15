@@ -135,7 +135,6 @@ output "test-user-password" {
 
 resource "vault_jwt_auth_backend" "github-actions" {
   description = "GitHub Actions JWT Auth"
-  # path = "github-actions-jwt"
   path = "jwt"
   oidc_discovery_url = "https://token.actions.githubusercontent.com"
   bound_issuer = "https://token.actions.githubusercontent.com"
