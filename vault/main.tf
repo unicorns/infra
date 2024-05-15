@@ -135,7 +135,8 @@ output "test-user-password" {
 
 resource "vault_jwt_auth_backend" "github-actions" {
   description = "GitHub Actions JWT Auth"
-  path = "github-actions-jwt"
+  # path = "github-actions-jwt"
+  path = "jwt"
   oidc_discovery_url = "https://token.actions.githubusercontent.com"
   bound_issuer = "https://token.actions.githubusercontent.com"
 }
@@ -167,6 +168,7 @@ resource "vault_jwt_auth_backend_role" "github-actions-unicorns-infra-rw" {
   role_name = var.github_actions_unicorns_infra_jwt_role_name_rw
   user_claim = "actor"
   bound_claims = {
+    # A list of available options: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token
     "repository" = "unicorns/infra"
     # TODO: branch?
   }
