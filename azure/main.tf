@@ -15,27 +15,16 @@ terraform {
   }
 }
 
-# Subscription ID is obtained from Azure portal: https://portal.azure.com/#@unicorn.onmicrosoft.com/resource/subscriptions/da091416-7245-487a-a165-deb1cb35397e/overview
 variable subscription_id {
   type = string
 }
 
-# Manually-created app registration:
-# https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/appId/d3652031-0c86-43e4-9129-4e50111477aa/isMSAApp~/false
-#
-# Subscription Permissions (https://portal.azure.com/#@unicorn.onmicrosoft.com/resource/subscriptions/da091416-7245-487a-a165-deb1cb35397e/users):
-# - Contributor 
-#
-# Instructions:
-# https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/service_principal_client_secret
 variable app_client_id {
   type = string
 }
 variable app_tenant_id {
   type = string
 }
-# Manually generated here:
-# https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Credentials/appId/d3652031-0c86-43e4-9129-4e50111477aa/isMSAApp~/false
 variable app_client_secret {
   type = string
   sensitive = true

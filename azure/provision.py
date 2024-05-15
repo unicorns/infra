@@ -7,10 +7,12 @@ SCRIPT_PATH = Path(__file__)
 from common.provisioner_utils import (
     init_environment,
     run_terraform,
-    get_terraform_output,
-    update_output,
 )
 from common.cli_utils import get_app
+from common.variables import (
+    AZURE_TERRAFORM_PROVISIONER_APP_SECRETS_PATH,
+    AZURE_SECRETS_PATH,
+)
 
 app = get_app()
 
@@ -18,8 +20,12 @@ app = get_app()
 def all():
     tools = init_environment(SCRIPT_PATH, use_terraform=True)
 
-    app_secrets = tools.vault_client.secrets.kv.v2.read_secret('azure/terraform-provisioner')['data']['data']
-    subscription_id = tools.vault_client.secrets.kv.v2.read_secret('azure')['data']['data']['subscription_id']
+    app_secrets = tools.vault_client.secrets.kv.v2.read_secret(
+        AZURE_TERRAFORM_PROVISIONER_APP_SECRETS_PATH
+    )["data"]["data"]
+    subscription_id = tools.vault_client.secrets.kv.v2.read_secret(
+        AZURE_SECRETS_PATH
+    )["data"]["data"]["subscription_id"]
 
     tf_vars = {
         'subscription_id': subscription_id,

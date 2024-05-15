@@ -11,6 +11,7 @@ import typer
 
 from common.cli_utils import get_app
 from common.utils import deep_equal, extract_json_objects
+from common.variables import TERRAFORM_CLOUD_SECRETS_PATH
 from vault.vault_utils import get_vault_client
 
 SCRIPT_PATH = Path(__file__)
@@ -50,9 +51,9 @@ def init_environment(script_path: Path, use_terraform: bool = False, use_terragr
     if use_terraform or use_terragrunt:
         vault_client = vault_client or get_vault_client()
 
-        # This token is created as a user token in the Terraform Cloud UI:
-        # https://app.terraform.io/app/settings/tokens
-        os.environ["TF_TOKEN_app_terraform_io"] = vault_client.secrets.kv.v2.read_secret('tfcloud')['data']['data']['access_token']
+        os.environ["TF_TOKEN_app_terraform_io"] = vault_client.secrets.kv.v2.read_secret(
+            TERRAFORM_CLOUD_SECRETS_PATH
+        )['data']['data']['access_token']
 
     if use_terraform:
         os.environ["TF_DATA_DIR"] = str(env.PROV_RUN_DIR / '.terraform')
