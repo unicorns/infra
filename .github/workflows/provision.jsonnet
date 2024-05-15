@@ -62,27 +62,56 @@ local create_pr_steps = [
   },
 ];
 
-local make_provision_job(name, provisioner_command, dependencies=[], create_pr_on_change=false) = {
-  [utils.slugify(name)]: {
-    needs: std.map(utils.slugify, dependencies),
-    'runs-on': 'ubuntu-latest',
-    [if create_pr_on_change then 'permissions']: {
-      // required for creating pull requests
-      'pull-requests': 'write',
+local vault_setup_steps = [
+  {
+    name: 'Set up Vault',
+    uses: 'hashicorp/vault-action@v2',
+    with: {
+      exportToken: true,
+      method: 'jwt',
+      url: '${{ env.VAULT_ADDR }}',
+      role: "${{ github.ref_name == 'main' && env.VAULT_ROLE_RW || env.VAULT_ROLE_RO }}",
     },
-    steps: common_init_steps(
-      // This is required because normal GITHUB_TOKEN does not have workflow permissions
-      // https://github.com/orgs/community/discussions/35410#discussioncomment-7645702
-      // https://github.com/peter-evans/create-pull-request/blob/15410bdb79bc0f69a005c1c860378ed08968f998/docs/concepts-guidelines.md?plain=1#L188
-      actions_checkout_options=(if create_pr_on_change then { 'ssh-key': '${{ secrets.DEPLOY_KEY }}' } else {}),
-    ) + [
-      {
-        name: name,
-        run: provisioner_command,
-      },
-    ] + (if create_pr_on_change then create_pr_steps else []),
   },
-};
+];
+
+local merge_rw(a, b) = if a == 'write' || b == 'write' then 'write' else 'read';
+
+local merge_perm_helper(acc, perm) =
+  if std.objectHas(acc, perm.k) then
+    acc { [perm.k]: merge_rw(acc[perm.k], perm.v) }
+  else
+    acc { [perm.k]: perm.v };
+
+local merge_perms(perms) =
+  std.foldl(merge_perm_helper, perms, {});
+
+local make_provision_job(name, provisioner_command, dependencies=[], create_pr_on_change=false, requires_vault=false) =
+  local perms = merge_perms(
+    (if create_pr_on_change then [{ k: 'pull-requests', v: 'write' }] else [])
+    + (if requires_vault then [{ k: 'contents', v: 'read' }, { k: 'id-token', v: 'write' }] else [])
+  );
+
+  local vault_init = if requires_vault then vault_setup_steps else [];
+
+  {
+    [utils.slugify(name)]: {
+      needs: std.map(utils.slugify, dependencies),
+      'runs-on': 'ubuntu-latest',
+      [if perms == {} then null else 'permissions']: perms,
+      steps: vault_init + common_init_steps(
+        // This is required because normal GITHUB_TOKEN does not have workflow permissions
+        // https://github.com/orgs/community/discussions/35410#discussioncomment-7645702
+        // https://github.com/peter-evans/create-pull-request/blob/15410bdb79bc0f69a005c1c860378ed08968f998/docs/concepts-guidelines.md?plain=1#L188
+        actions_checkout_options=(if create_pr_on_change then { 'ssh-key': '${{ secrets.DEPLOY_KEY }}' } else {}),
+      ) + [
+        {
+          name: name,
+          run: provisioner_command,
+        },
+      ] + (if create_pr_on_change then create_pr_steps else []),
+    },
+  };
 
 local wrap_jobs(jobs) = jobs {
   'all-good': {
@@ -126,16 +155,19 @@ local wrap_jobs(jobs) = jobs {
       make_provision_job(
         'Update workflow',
         |||
+          env
           docker compose run provisioner /bin/bash -c 'jrsonnet --exp-preserve-order .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.yml'
         |||,
-        create_pr_on_change=true
+        create_pr_on_change=true,
+        requires_vault=true,
       )
       + make_provision_job(
         'Dummy test',
         |||
           docker compose run provisioner env
         |||,
-        dependencies=['Update workflow']
+        dependencies=['Update workflow'],
+        requires_vault=true,
       ),
     ),
 }

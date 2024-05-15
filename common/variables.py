@@ -32,3 +32,11 @@ TERRAFORM_CLOUD_SECRETS_PATH = "tfcloud"
 # This is obtained from the Tailscale admin console:
 # https://login.tailscale.com/admin/settings/oauth
 TAILSCALE_KUBERNETES_OPERATOR_SECRETS_PATH = "tailscale/kubernetes-operator"
+
+# Used to authenticate the GitHub Actions to HashiCorp Vault.
+GITHUB_ACTIONS_UNICORNS_INFRA_JWT_ROLE_NAME_RO = (
+    "github-actions-unicorns-infra-provisioner-ro"
+)
+GITHUB_ACTIONS_UNICORNS_INFRA_JWT_ROLE_NAME_RW = (
+    "github-actions-unicorns-infra-provisioner-rw"
+)

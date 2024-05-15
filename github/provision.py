@@ -6,9 +6,11 @@ SCRIPT_PATH = Path(__file__)
 
 from common.cli_utils import get_app
 from common.provisioner_utils import init_environment, run_terraform
-from common.variables import GITHUB_INFRASTRUCTURE_PROVISIONER_APP_SECRETS_PATH
+from common.variables import (
+    GITHUB_ACTIONS_UNICORNS_INFRA_JWT_ROLE_NAME_RO,
+    GITHUB_ACTIONS_UNICORNS_INFRA_JWT_ROLE_NAME_RW,
+    GITHUB_INFRASTRUCTURE_PROVISIONER_APP_SECRETS_PATH, HASHICORP_VAULT_ADDR)
 from github import Auth, GithubIntegration
-
 
 app = get_app()
 
@@ -37,6 +39,9 @@ def all():
         "app_id": app_client_id,
         "installation_id": installation_id,
         "pem_file": app_private_key,
+        "infra_vault_addr": HASHICORP_VAULT_ADDR,
+        "infra_vault_role_ro": GITHUB_ACTIONS_UNICORNS_INFRA_JWT_ROLE_NAME_RO,
+        "infra_vault_role_rw": GITHUB_ACTIONS_UNICORNS_INFRA_JWT_ROLE_NAME_RW,
     }
 
     run_terraform(tools, tf_vars)

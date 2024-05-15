@@ -41,10 +41,21 @@ resource "vault_auth_backend" "userpass" {
   }
 }
 
-# The base-provisioner policy allows read access to all secrets
+# The provisioner-ro policy allows read access to all secrets.
+resource "vault_policy" "provisioner-ro" {
+  name   = "provisioner-ro"
+
+  policy = <<-EOF
+    path "secret/data/*" {
+      capabilities = ["read"]
+    }
+    EOF
+}
+
+# The provisioner-rw policy allows read access to all secrets
 # and write access to the outputs.
-resource "vault_policy" "base-provisioner" {
-  name   = "base-provisioner"
+resource "vault_policy" "provisioner-rw" {
+  name   = "provisioner-rw"
 
   policy = <<-EOF
     path "secret/data/*" {
@@ -120,4 +131,47 @@ resource "vault_generic_endpoint" "test-user" {
 output "test-user-password" {
   value = random_password.test-user-password.result
   sensitive = true
+}
+
+resource "vault_jwt_auth_backend" "github-actions" {
+  description = "GitHub Actions JWT Auth"
+  path = "github-actions-jwt"
+  oidc_discovery_url = "https://token.actions.githubusercontent.com"
+  bound_issuer = "https://token.actions.githubusercontent.com"
+}
+
+variable "github_actions_unicorns_infra_jwt_role_name_ro" {
+  type = string
+}
+
+resource "vault_jwt_auth_backend_role" "github-actions-unicorns-infra-ro" {
+  backend = vault_jwt_auth_backend.github-actions.path
+  role_name = var.github_actions_unicorns_infra_jwt_role_name_ro
+  user_claim = "actor"
+  bound_claims = {
+    "repository" = "unicorns/infra"
+    # TODO: branch?
+  }
+  token_policies = [vault_policy.provisioner-ro.name]
+  role_type = "jwt"
+  token_ttl = 1 * pow(60, 2) # pow(60, 2) = 1 hour (in seconds)
+  token_max_ttl = 1 * pow(60, 2) # pow(60, 2) = 1 hour (in seconds)
+}
+
+variable "github_actions_unicorns_infra_jwt_role_name_rw" {
+  type = string
+}
+
+resource "vault_jwt_auth_backend_role" "github-actions-unicorns-infra-rw" {
+  backend = vault_jwt_auth_backend.github-actions.path
+  role_name = var.github_actions_unicorns_infra_jwt_role_name_rw
+  user_claim = "actor"
+  bound_claims = {
+    "repository" = "unicorns/infra"
+    # TODO: branch?
+  }
+  token_policies = [vault_policy.provisioner-rw.name]
+  role_type = "jwt"
+  token_ttl = 1 * pow(60, 2) # pow(60, 2) = 1 hour (in seconds)
+  token_max_ttl = 1 * pow(60, 2) # pow(60, 2) = 1 hour (in seconds)
 }

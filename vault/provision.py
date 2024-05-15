@@ -4,14 +4,11 @@ from pathlib import Path
 
 SCRIPT_PATH = Path(__file__)
 
-from common.provisioner_utils import (
-    init_environment,
-    run_terraform,
-    get_terraform_output,
-    update_output,
-)
 from common.cli_utils import get_app
-from common.variables import HASHICORP_VAULT_ADDR
+from common.provisioner_utils import init_environment, run_terraform
+from common.variables import (GITHUB_ACTIONS_UNICORNS_INFRA_JWT_ROLE_NAME_RO,
+                              GITHUB_ACTIONS_UNICORNS_INFRA_JWT_ROLE_NAME_RW,
+                              HASHICORP_VAULT_ADDR)
 
 app = get_app()
 
@@ -21,6 +18,8 @@ def all():
 
     tf_vars = {
         "vault_address": HASHICORP_VAULT_ADDR,
+        "github_actions_unicorns_infra_jwt_role_name_ro": GITHUB_ACTIONS_UNICORNS_INFRA_JWT_ROLE_NAME_RO,
+        "github_actions_unicorns_infra_jwt_role_name_rw": GITHUB_ACTIONS_UNICORNS_INFRA_JWT_ROLE_NAME_RW,
     }
 
     run_terraform(tools, tf_vars)
