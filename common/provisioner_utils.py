@@ -93,13 +93,13 @@ def run_terraform_generic_with_var_files(env: ProvisionerEnvironment, command: s
     return run_terraform_generic(env, command, var_flags + additional_args)
 
 def run_terraform_init(env: ProvisionerEnvironment, additional_args=[]):
-    return run_terraform_generic(env, "init", additional_args)
+    return run_terraform_generic(env, "init", [ "-lock-timeout=20m" ] + additional_args)
 
 def run_terraform_plan(env: ProvisionerEnvironment, additional_args=[]):
-    return run_terraform_generic_with_var_files(env, "plan", additional_args)
+    return run_terraform_generic_with_var_files(env, "plan", [ "-lock-timeout=20m", "-refresh=false" ] + additional_args)
 
 def run_terraform_apply(env: ProvisionerEnvironment, additional_args=[]):
-    return run_terraform_generic_with_var_files(env, "apply", additional_args)
+    return run_terraform_generic_with_var_files(env, "apply", [ "-lock-timeout=20m" ] + additional_args)
 
 def get_terraform_output(env: ProvisionerEnvironment, additional_args=[]):
     res = run_terraform_generic(env, "output", ["-json"] + additional_args, subprocess_args={'capture_output': True, 'text': True})
