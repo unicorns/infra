@@ -69,8 +69,8 @@ local vault_setup_steps = [
     with: {
       exportToken: true,
       method: 'jwt',
-      url: '${{ env.VAULT_ADDR }}',
-      role: "${{ github.ref_name == 'main' && env.VAULT_ROLE_RW || env.VAULT_ROLE_RO }}",
+      url: '${{ vars.VAULT_ADDR }}',
+      role: "${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}",
     },
   },
 ];
