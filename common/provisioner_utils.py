@@ -107,6 +107,13 @@ def get_terraform_output(env: ProvisionerEnvironment, additional_args=[]):
 
     return output
 
+def get_terraform_state(env: ProvisionerEnvironment, additional_args=[]):
+    res = run_terraform_generic(env, "state", ["pull"] + additional_args, subprocess_args={'capture_output': True, 'text': True})
+    assert res.returncode == 0, f"Failed to get Terraform state: {res.stderr}"
+    state = json.loads(res.stdout)
+
+    return state
+
 def run_terraform(tools: ProvisionerTools, vars_dict: dict, additional_init_args=[], additional_plan_args=[], additional_apply_args=[]):
     write_terraform_vars(tools.env, vars_dict)
 
@@ -118,6 +125,9 @@ def run_terraform(tools: ProvisionerTools, vars_dict: dict, additional_init_args
         run_terraform_apply(tools.env, additional_apply_args)
         output = get_terraform_output(tools.env)
         update_output(tools, output, confirm=os.environ.get('NO_CONFIRM') != "true")
+        if os.environ.get('BACK_UP_STATE'):
+            state = get_terraform_state(tools.env)
+            back_up_state(tools, state, confirm=os.environ.get('NO_CONFIRM') != "true")
 
 ############################################
 # Terragrunt functions
@@ -198,6 +208,12 @@ def make_terragrunt_command(script_path, project, package, get_global_vars_fn):
         assert res.returncode == 0, f"Failed to get Terragrunt output for project '{project}': {res.stderr}"
         output = json.loads(res.stdout)
         update_output(tools, output, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=os.environ.get("NO_CONFIRM") != "true")
+        
+        if os.environ.get("BACK_UP_STATE"):
+            res = run_terragrunt_generic_with_project(tools.env, project, "state", ["pull"], subprocess_args={'capture_output': True, 'text': True})
+            assert res.returncode == 0, f"Failed to get Terragrunt state for project '{project}': {res.stderr}"
+            state = json.loads(res.stdout)
+            back_up_state(tools, state, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=os.environ.get("NO_CONFIRM") != "true")
 
     return command
 
@@ -244,14 +260,39 @@ def make_terragrunt_app(script_path: Path, package: str, get_global_vars_fn: cal
             diff = update_output(tools, output, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", dry_run=True)
             if diff:
                 diffs[project] = diff
+            
         
         if len(diffs) > 0:
-            if os.environ.get("NO_CONFIRM") != "true":
-                typer.confirm("Do you want to apply the changes?", abort=True)
+            if os.environ.get("NO_CONFIRM") or typer.confirm("Do you want to apply the changes?"):
+                for project, diff in diffs.items():
+                    print(f"Applying output changes for project '{project}'...")
+                    update_output(tools, outputs[project], subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=False)
+            else:
+                print("Not applying output changes")
+
+        if os.environ.get("BACK_UP_STATE"):
+            states = {}
+            state_has_diffs = {}
+
+            for project in projects:
+                print(f"Getting state for project '{project}'...")
+
+                res = run_terragrunt_generic_with_project(tools.env, project, "state", ["pull"], subprocess_args={'capture_output': True, 'text': True})
+                assert res.returncode == 0, f"Failed to get Terragrunt state for project '{project}': {res.stderr}"
+                state = json.loads(res.stdout)
+                states[project] = state
+                has_diff = back_up_state(tools, state, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", dry_run=True)
+                state_has_diffs[project] = has_diff
             
-            for project, diff in diffs.items():
-                print(f"Applying output changes for project '{project}'...")
-                update_output(tools, outputs[project], subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=False)
+            if any(state_has_diffs.values()):
+                if os.environ.get("NO_CONFIRM") or typer.confirm("Do you want to back up the states?"):
+                    for project, has_diff in state_has_diffs.items():
+                        if has_diff:
+                            print(f"Backing up state for project '{project}'...")
+                            back_up_state(tools, states[project], subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=False)
+                else:
+                    print("Not backing up states")
+
 
     return app
 
@@ -333,8 +374,8 @@ def update_output(tools: ProvisionerTools, output: dict, subpath: str = None, co
     if dry_run:
         return diff
 
-    if confirm:
-        typer.confirm("Do you want to update the output?", abort=True)
+    if confirm and not typer.confirm("Do you want to update the output?"):
+        return diff
 
     print("Applying output changes...")
 
@@ -344,3 +385,31 @@ def update_output(tools: ProvisionerTools, output: dict, subpath: str = None, co
     )
 
     return diff
+
+def back_up_state(tools: ProvisionerTools, state: dict, subpath: str = None, confirm: bool = True, dry_run: bool = False):
+    if not subpath:
+        subpath = tools.env.PROV_PROJ_NAME
+
+    try:
+        existing_state = tools.vault_client.secrets.kv.v2.read_secret(f'states/{subpath}')['data']['data']
+    except hvac.exceptions.InvalidPath:
+        existing_state = {}
+
+    if deep_equal(existing_state, state):
+        print("No state changes")
+        return False
+
+    print("Detected state changes")
+
+    if dry_run:
+        return True
+
+    if confirm and not typer.confirm("Do you want to back up the state?"):
+        return True
+    
+    print("Backing up state changes...")
+
+    tools.vault_client.secrets.kv.v2.create_or_update_secret(
+        path=f"states/{subpath}",
+        secret=dict(state),
+    )
