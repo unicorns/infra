@@ -11,6 +11,22 @@ terraform {
       "${get_env("PROV_RUN_DIR")}/terraform.tfvars.json",
     ]
   }
+
+  extra_arguments "retry_lock" {
+    commands = [
+      "init",
+      "apply",
+      "refresh",
+      "import",
+      "plan",
+      "taint",
+      "untaint"
+    ]
+
+    arguments = [
+      "-lock-timeout=20m"
+    ]
+  }
 }
 
 generate backend {
