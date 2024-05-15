@@ -62,10 +62,11 @@ local create_pr_steps = [
   },
 ];
 
+// Reference: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-hashicorp-vault#requesting-the-access-token
 local vault_setup_steps = [
   {
     name: 'Set up Vault',
-    uses: 'hashicorp/vault-action@v2',
+    uses: 'hashicorp/vault-action@d1720f055e0635fd932a1d2a48f87a666a57906c',  // v3.0.0
     with: {
       exportToken: true,
       method: 'jwt',
@@ -75,6 +76,7 @@ local vault_setup_steps = [
   },
 ];
 
+// Reference: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-hashicorp-vault#revoking-the-access-token
 local vault_cleanup_steps = [
   {
     name: 'Revoke Vault token',
