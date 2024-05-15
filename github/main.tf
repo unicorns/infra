@@ -94,3 +94,33 @@ resource github_actions_secret "infra-deploy-key" {
   secret_name = "DEPLOY_KEY"
   plaintext_value = tls_private_key.infra-deploy-key.private_key_openssh
 }
+
+variable infra_vault_addr {
+  type = string
+}
+
+resource github_actions_variable "infra-vault-addr" {
+  repository = github_repository.infra.name
+  variable_name = "VAULT_ADDR"
+  value = var.infra_vault_addr
+}
+
+variable "infra_vault_role_ro" {
+  type = string
+}
+
+resource github_actions_variable "infra-vault-role-ro" {
+  repository = github_repository.infra.name
+  variable_name = "VAULT_ROLE_RO"
+  value = var.infra_vault_role_ro
+}
+
+variable "infra_vault_role_rw" {
+  type = string
+}
+
+resource github_actions_variable "infra-vault-role-rw" {
+  repository = github_repository.infra.name
+  variable_name = "VAULT_ROLE_RW"
+  value = var.infra_vault_role_rw
+}
