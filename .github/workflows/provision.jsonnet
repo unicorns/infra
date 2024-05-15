@@ -75,6 +75,14 @@ local vault_setup_steps = [
   },
 ];
 
+local vault_cleanup_steps = [
+  {
+    name: 'Revoke Vault token',
+    'if': 'always()',
+    run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self',
+  },
+];
+
 local merge_rw(a, b) = if a == 'write' || b == 'write' then 'write' else 'read';
 
 local merge_perm_helper(acc, perm) =
@@ -92,14 +100,15 @@ local make_provision_job(name, provisioner_command, dependencies=[], create_pr_o
     + (if requires_vault then [{ k: 'contents', v: 'read' }, { k: 'id-token', v: 'write' }] else [])
   );
 
-  local vault_init = if requires_vault then vault_setup_steps else [];
+  local vault_setup = if requires_vault then vault_setup_steps else [];
+  local vault_cleanup = if requires_vault then vault_cleanup_steps else [];
 
   {
     [utils.slugify(name)]: {
       needs: std.map(utils.slugify, dependencies),
       'runs-on': 'ubuntu-latest',
       [if perms == {} then null else 'permissions']: perms,
-      steps: vault_init + common_init_steps(
+      steps: vault_setup + common_init_steps(
         // This is required because normal GITHUB_TOKEN does not have workflow permissions
         // https://github.com/orgs/community/discussions/35410#discussioncomment-7645702
         // https://github.com/peter-evans/create-pull-request/blob/15410bdb79bc0f69a005c1c860378ed08968f998/docs/concepts-guidelines.md?plain=1#L188
@@ -109,7 +118,7 @@ local make_provision_job(name, provisioner_command, dependencies=[], create_pr_o
           name: name,
           run: provisioner_command,
         },
-      ] + (if create_pr_on_change then create_pr_steps else []),
+      ] + (if create_pr_on_change then create_pr_steps else []) + vault_cleanup,
     },
   };
 
@@ -155,7 +164,6 @@ local wrap_jobs(jobs) = jobs {
       make_provision_job(
         'Update workflow',
         |||
-          env
           docker compose run provisioner /bin/bash -c 'jrsonnet --exp-preserve-order .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.yml'
         |||,
         create_pr_on_change=true,
