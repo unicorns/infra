@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 from enum import Enum
 
@@ -34,7 +35,13 @@ def get_app(default_output_format: TyperOutputFormat = TyperOutputFormat.yaml, c
     if print_retval_fn is None:
         print_retval_fn = default_print_retval
 
-    app = typer.Typer(result_callback=print_retval_fn, no_args_is_help=True)
+    app = typer.Typer(
+        result_callback=print_retval_fn,
+        no_args_is_help=True,
+        # Don't show pretty exceptions in CI, because it shows local variable values
+        # and may expose secrets
+        pretty_exceptions_enable=not os.environ.get("CI"),
+    )
 
     if callback_fn is None:
         @app.callback()
