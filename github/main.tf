@@ -61,6 +61,22 @@ import {
   to = github_repository.infra
 }
 
+resource github_branch_protection infra-main {
+  repository_id = github_repository.infra.node_id
+
+  pattern = "main"
+  enforce_admins = true
+  require_conversation_resolution = true
+  required_status_checks {
+    strict = true
+    contexts = [ "update-workflow" ]
+  }
+
+  required_pull_request_reviews {
+    required_approving_review_count = 0
+  }
+}
+
 resource tls_private_key infra-deploy-key {
   algorithm = "RSA"
   rsa_bits = 4096
