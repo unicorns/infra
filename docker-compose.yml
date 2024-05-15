@@ -19,5 +19,7 @@ services:
     # init handles singal forwarding so the container can be stopped gracefully.
     init: true
     environment:
-      DRY_RUN: ${DRY_RUN:-}
       PYTHONPATH: /${COMPOSE_PROJECT_NAME:?}
+      DRY_RUN: ${DRY_RUN:-}
+      NO_CONFIRM: ${NO_CONFIRM:-}
+      BACK_UP_STATE: ${BACK_UP_STATE:-}

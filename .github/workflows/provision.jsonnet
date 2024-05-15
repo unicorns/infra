@@ -108,7 +108,7 @@ local make_provision_job(name, provisioner_command, dependencies=[], create_pr_o
     + make_provision_job(
       'Dummy test',
       |||
-        docker compose run provisioner echo "Dummy test"
+        docker compose run provisioner env
       |||,
       dependencies=['Update workflow']
     ),
