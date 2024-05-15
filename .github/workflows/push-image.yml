@@ -24,10 +24,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+
+      # This sets up the docker-container driver, which has more features like registry cache export
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0 # v3
 
       - name: Log in to the Container registry
-        uses: docker/login-action@40891eba8c2bcd1309b07ba8b11232f313e86779
+        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v3.1.0
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
           username: ${{ env.REGISTRY_USER }}
@@ -35,12 +39,12 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@c4ee3adeed93b1fa6a762f209fb01608c1a22f1e
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
         with:
           images: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@91df6b874e498451163feb47610c87c4a218c1ee
+        uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5.3.0
         with:
           context: .
           push: true
