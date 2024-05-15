@@ -9,6 +9,9 @@ services:
       # The output directory is mounted as rw so that the provisioner can write
       # to it.
       - ./outputs:/${COMPOSE_PROJECT_NAME:?}/outputs:rw
+      # The .github/workflows directory is mounted as rw so that the provisioner
+      # can generate workflows.
+      - ./.github/workflows:/${COMPOSE_PROJECT_NAME:?}/.github/workflows:rw
     tmpfs:
       - /run:exec
       - /tmp:exec

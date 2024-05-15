@@ -1,26 +1,75 @@
 name: Provision
-
-on:
+"on":
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
-  merge_group:
-  workflow_dispatch:
-
+    branches:
+      - main
+  merge_group: null
+  workflow_dispatch: null
 concurrency: provision_concurrency_group-${{ github.event.pull_request.number || github.ref_name }}
-
 jobs:
-  test-docker-cache:
+  update-workflow:
+    needs: []
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-
-      # This sets up the docker-container driver, which has more features like registry cache export
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0 # v3
-
-      - name: Test Docker cache
+        uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0
+      - name: Build the provisioner
+        run: docker compose build provisioner
+      - name: Set up environment variables
         run: |
-          docker compose build provisioner
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo 'NO_CONFIRM=true' >> .env
+            echo 'BACK_UP_STATE=true' >> .env
+          else
+            echo 'DRY_RUN=true' >> .env
+          fi
+      - name: Update workflow
+        run: |
+          docker compose run provisioner /bin/bash -c 'jrsonnet --exp-preserve-order .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.yml'
+      - name: Create PR if there are changes
+        id: create_pr
+        uses: peter-evans/create-pull-request@6d6857d36972b65feb161a90e484f2984215f83e
+        with:
+          base: ${{ github.head_ref || github.ref_name }}
+          branch: auto-update-${{ github.ref_name || github.ref_name }}
+          title: '[Auto] Update from CI'
+          body: |
+            This PR was automatically created by the CI pipeline.
+
+            Workflow: `${{ github.workflow }}`
+            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+            Source: ${{ github.ref }}
+          commit-message: '[Auto] Update from CI'
+      - name: Fail if there are changes
+        if: ${{ steps.create_pr.outputs.pull-request-number }}
+        run: |
+          echo "Changes are required. Please refer to pull request #${{ steps.create_pr.outputs.pull-request-number }}"
+          echo "Pull Request URL - ${{ steps.create_pr.outputs.pull-request-url }}"
+          exit 1
+  dummy-test:
+    needs:
+      - update-workflow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0
+      - name: Build the provisioner
+        run: docker compose build provisioner
+      - name: Set up environment variables
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo 'NO_CONFIRM=true' >> .env
+            echo 'BACK_UP_STATE=true' >> .env
+          else
+            echo 'DRY_RUN=true' >> .env
+          fi
+      - name: Dummy test
+        run: |
+          docker compose run provisioner echo "Dummy test"
