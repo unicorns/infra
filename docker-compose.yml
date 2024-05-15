@@ -23,3 +23,4 @@ services:
       DRY_RUN: ${DRY_RUN:-}
       NO_CONFIRM: ${NO_CONFIRM:-}
       BACK_UP_STATE: ${BACK_UP_STATE:-}
+      VAULT_TOKEN: ${VAULT_TOKEN:-}
