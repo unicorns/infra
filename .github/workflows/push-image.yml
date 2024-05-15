@@ -44,3 +44,4 @@ jobs:
             DOCKER_METADATA_OUTPUT_JSON
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-to: type=inline
