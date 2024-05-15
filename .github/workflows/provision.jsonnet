@@ -66,7 +66,7 @@ local make_provision_job(name, provisioner_command, dependencies=[], create_pr_o
   [utils.slugify(name)]: {
     needs: std.map(utils.slugify, dependencies),
     'runs-on': 'ubuntu-latest',
-    [if create_pr_on_change then "permissions"]: {
+    [if create_pr_on_change then 'permissions']: {
       // required for creating pull requests
       'pull-requests': 'write',
     },
@@ -74,13 +74,33 @@ local make_provision_job(name, provisioner_command, dependencies=[], create_pr_o
       // This is required because normal GITHUB_TOKEN does not have workflow permissions
       // https://github.com/orgs/community/discussions/35410#discussioncomment-7645702
       // https://github.com/peter-evans/create-pull-request/blob/15410bdb79bc0f69a005c1c860378ed08968f998/docs/concepts-guidelines.md?plain=1#L188
-      actions_checkout_options=(if create_pr_on_change then {"ssh-key": "${{ secrets.DEPLOY_KEY }}" } else {}),
+      actions_checkout_options=(if create_pr_on_change then { 'ssh-key': '${{ secrets.DEPLOY_KEY }}' } else {}),
     ) + [
       {
         name: name,
         run: provisioner_command,
       },
     ] + (if create_pr_on_change then create_pr_steps else []),
+  },
+};
+
+local wrap_jobs(jobs) = jobs {
+  'all-good': {
+    needs: std.objectFields(jobs),
+    'runs-on': 'ubuntu-latest',
+    'if': 'always()',
+    steps: [
+      {
+        'if': "${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}",
+        name: 'Print success message if all jobs are successful',
+        run: "echo 'All good!'",
+      },
+      {
+        'if': "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}",
+        name: 'Fail the job if one or more jobs failed',
+        run: "echo 'One or more jobs failed.' && exit 1",
+      },
+    ],
   },
 };
 
@@ -102,18 +122,20 @@ local make_provision_job(name, provisioner_command, dependencies=[], create_pr_o
   },
   concurrency: 'provision_concurrency_group-${{ github.event.pull_request.number || github.ref_name }}',
   jobs:
-    make_provision_job(
-      'Update workflow',
-      |||
-        docker compose run provisioner /bin/bash -c 'jrsonnet --exp-preserve-order .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.yml'
-      |||,
-      create_pr_on_change=true
-    )
-    + make_provision_job(
-      'Dummy test',
-      |||
-        docker compose run provisioner env
-      |||,
-      dependencies=['Update workflow']
+    wrap_jobs(
+      make_provision_job(
+        'Update workflow',
+        |||
+          docker compose run provisioner /bin/bash -c 'jrsonnet --exp-preserve-order .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.yml'
+        |||,
+        create_pr_on_change=true
+      )
+      + make_provision_job(
+        'Dummy test',
+        |||
+          docker compose run provisioner env
+        |||,
+        dependencies=['Update workflow']
+      ),
     ),
 }
