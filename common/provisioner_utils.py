@@ -10,7 +10,7 @@ import hvac
 import typer
 
 from common.cli_utils import get_app
-from common.utils import deep_equal
+from common.utils import deep_equal, extract_json_objects
 from vault.vault_utils import get_vault_client
 
 SCRIPT_PATH = Path(__file__)
@@ -103,14 +103,14 @@ def run_terraform_apply(env: ProvisionerEnvironment, additional_args=[]):
 def get_terraform_output(env: ProvisionerEnvironment, additional_args=[]):
     res = run_terraform_generic(env, "output", ["-json"] + additional_args, subprocess_args={'capture_output': True, 'text': True})
     assert res.returncode == 0, f"Failed to get Terraform output: {res.stderr}"
-    output = json.loads(res.stdout)
+    output = next(extract_json_objects(res.stdout))
 
     return output
 
 def get_terraform_state(env: ProvisionerEnvironment, additional_args=[]):
     res = run_terraform_generic(env, "state", ["pull"] + additional_args, subprocess_args={'capture_output': True, 'text': True})
     assert res.returncode == 0, f"Failed to get Terraform state: {res.stderr}"
-    state = json.loads(res.stdout)
+    state = next(extract_json_objects(res.stdout))
 
     return state
 
@@ -206,13 +206,13 @@ def make_terragrunt_command(script_path, project, package, get_global_vars_fn):
         # Get output
         res = run_terragrunt_generic_with_project(tools.env, project, "output", ["-json"], subprocess_args={'capture_output': True, 'text': True})
         assert res.returncode == 0, f"Failed to get Terragrunt output for project '{project}': {res.stderr}"
-        output = json.loads(res.stdout)
+        output = next(extract_json_objects(res.stdout))
         update_output(tools, output, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=os.environ.get("NO_CONFIRM") != "true")
         
         if os.environ.get("BACK_UP_STATE"):
             res = run_terragrunt_generic_with_project(tools.env, project, "state", ["pull"], subprocess_args={'capture_output': True, 'text': True})
             assert res.returncode == 0, f"Failed to get Terragrunt state for project '{project}': {res.stderr}"
-            state = json.loads(res.stdout)
+            state = next(extract_json_objects(res.stdout))
             back_up_state(tools, state, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=os.environ.get("NO_CONFIRM") != "true")
 
     return command
@@ -255,7 +255,7 @@ def make_terragrunt_app(script_path: Path, package: str, get_global_vars_fn: cal
             print(f"Getting output for project '{project}'...")
             res = run_terragrunt_generic_with_project(tools.env, project, "output", ["-json"], subprocess_args={'capture_output': True, 'text': True})
             assert res.returncode == 0, f"Failed to get Terragrunt output for project '{project}': {res.stderr}"
-            output = json.loads(res.stdout)
+            output = next(extract_json_objects(res.stdout))
             outputs[project] = output
             diff = update_output(tools, output, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", dry_run=True)
             if diff:
@@ -279,7 +279,7 @@ def make_terragrunt_app(script_path: Path, package: str, get_global_vars_fn: cal
 
                 res = run_terragrunt_generic_with_project(tools.env, project, "state", ["pull"], subprocess_args={'capture_output': True, 'text': True})
                 assert res.returncode == 0, f"Failed to get Terragrunt state for project '{project}': {res.stderr}"
-                state = json.loads(res.stdout)
+                state = next(extract_json_objects(res.stdout))
                 states[project] = state
                 has_diff = back_up_state(tools, state, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", dry_run=True)
                 state_has_diffs[project] = has_diff
