@@ -123,7 +123,7 @@ def run_terraform(tools: ProvisionerTools, vars_dict: dict, additional_init_args
     if os.environ.get('DRY_RUN'):
         run_terraform_plan(tools.env, additional_plan_args)
     else:
-        run_terraform_apply(tools.env, additional_apply_args)
+        run_terraform_apply(tools.env, additional_apply_args + (["-auto-approve"] if os.environ.get('NO_CONFIRM') else []))
         output = get_terraform_output(tools.env)
         update_output(tools, output, confirm=os.environ.get('NO_CONFIRM') != "true")
         if os.environ.get('BACK_UP_STATE'):
@@ -173,7 +173,7 @@ def run_terragrunt(
     if os.environ.get("DRY_RUN"):
         run_terragrunt_generic_with_project(tools.env, project, "plan", additional_plan_args)
     else:
-        run_terragrunt_generic_with_project(tools.env, project, "apply", additional_apply_args)
+        run_terragrunt_generic_with_project(tools.env, project, "apply", additional_apply_args + (["--terragrunt-non-interactive"] if os.environ.get("NO_CONFIRM") else []))
 
 def import_preprovision_module(project: str, package: str):
     try:
