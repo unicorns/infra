@@ -69,7 +69,7 @@ resource github_branch_protection infra-main {
   enforce_admins = true
   require_conversation_resolution = true
   required_status_checks {
-    strict = true
+    strict = false # don't need the branch to be up-to-date
     contexts = [ "all-good" ]
   }
 
