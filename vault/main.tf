@@ -148,9 +148,10 @@ resource "vault_jwt_auth_backend_role" "github-actions-unicorns-infra-ro" {
   backend = vault_jwt_auth_backend.github-actions.path
   role_name = var.github_actions_unicorns_infra_jwt_role_name_ro
   user_claim = "actor"
+  # Docs: https://github.com/hashicorp/vault-action/blob/0f302fb182aed807f79e2c0558e3250bbc27b043/README.md#jwt-with-github-oidc-tokens
+  # A list of available options: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token
   bound_claims = {
-    "repository" = "unicorns/infra"
-    # TODO: branch?
+    "repository" = "unicorns/infra",
   }
   token_policies = [vault_policy.provisioner-ro.name]
   role_type = "jwt"
@@ -166,10 +167,12 @@ resource "vault_jwt_auth_backend_role" "github-actions-unicorns-infra-rw" {
   backend = vault_jwt_auth_backend.github-actions.path
   role_name = var.github_actions_unicorns_infra_jwt_role_name_rw
   user_claim = "actor"
+  # Docs: https://github.com/hashicorp/vault-action/blob/0f302fb182aed807f79e2c0558e3250bbc27b043/README.md#jwt-with-github-oidc-tokens
+  # A list of available options: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token
   bound_claims = {
-    # A list of available options: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token
-    "repository" = "unicorns/infra"
-    # TODO: branch?
+    "ref" = "refs/heads/main",
+    "ref_type" = "branch",
+    "repository" = "unicorns/infra",
   }
   token_policies = [vault_policy.provisioner-rw.name]
   role_type = "jwt"
