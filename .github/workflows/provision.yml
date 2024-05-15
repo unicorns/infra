@@ -19,7 +19,7 @@ jobs:
       id-token: write
     steps:
       - name: Set up Vault
-        uses: hashicorp/vault-action@v2
+        uses: hashicorp/vault-action@d1720f055e0635fd932a1d2a48f87a666a57906c
         with:
           exportToken: true
           method: jwt
@@ -43,7 +43,6 @@ jobs:
           fi
       - name: Update workflow
         run: |
-          env
           docker compose run provisioner /bin/bash -c 'jrsonnet --exp-preserve-order .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.yml'
       - name: Create PR if there are changes
         id: create_pr
@@ -65,6 +64,9 @@ jobs:
           echo "Changes are required. Please refer to pull request #${{ steps.create_pr.outputs.pull-request-number }}"
           echo "Pull Request URL - ${{ steps.create_pr.outputs.pull-request-url }}"
           exit 1
+      - name: Revoke Vault token
+        if: always()
+        run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
   dummy-test:
     needs:
       - update-workflow
@@ -74,7 +76,7 @@ jobs:
       id-token: write
     steps:
       - name: Set up Vault
-        uses: hashicorp/vault-action@v2
+        uses: hashicorp/vault-action@d1720f055e0635fd932a1d2a48f87a666a57906c
         with:
           exportToken: true
           method: jwt
@@ -98,6 +100,9 @@ jobs:
       - name: Dummy test
         run: |
           docker compose run provisioner env
+      - name: Revoke Vault token
+        if: always()
+        run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
   all-good:
     needs:
       - dummy-test
