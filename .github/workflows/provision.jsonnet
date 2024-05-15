@@ -65,6 +65,12 @@ local make_provision_job(name, provisioner_command, dependencies=[], create_pr_o
   [utils.slugify(name)]: {
     needs: std.map(utils.slugify, dependencies),
     'runs-on': 'ubuntu-latest',
+    [if create_pr_on_change then "permissions"]: {
+      # required for pushing to the repo
+      contents: 'write',
+      # required for creating pull requests
+      'pull-requests': 'write',
+    },
     steps: common_init_steps + [
       {
         name: name,
