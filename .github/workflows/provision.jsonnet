@@ -69,6 +69,7 @@ local vault_setup_steps = [
     with: {
       exportToken: true,
       method: 'jwt',
+      path: 'github-actions-jwt', # Must be in sync with the jwt auth backend path.
       url: '${{ vars.VAULT_ADDR }}',
       role: "${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}",
     },
