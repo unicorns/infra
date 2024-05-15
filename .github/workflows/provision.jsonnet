@@ -169,12 +169,19 @@ local wrap_jobs(jobs) = jobs {
           docker compose run provisioner /bin/bash -c 'jrsonnet --exp-preserve-order .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.yml'
         |||,
         create_pr_on_change=true,
-        requires_vault=true,
       )
       + make_provision_job(
         'Dummy test',
         |||
           docker compose run provisioner env
+        |||,
+        dependencies=['Update workflow'],
+        requires_vault=true,
+      )
+      + make_provision_job(
+        'Provision GitHub',
+        |||
+          docker compose run provisioner ./github/provision.py all
         |||,
         dependencies=['Update workflow'],
         requires_vault=true,
