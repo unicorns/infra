@@ -14,7 +14,13 @@ jobs:
   test-docker-cache:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-    - name: Test Docker cache
-      run: |
-        docker compose build provisioner
+      - name: Checkout repository
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+
+      # This sets up the docker-container driver, which has more features like registry cache export
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0 # v3
+
+      - name: Test Docker cache
+        run: |
+          docker compose build provisioner
