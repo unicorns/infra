@@ -66,10 +66,12 @@ local make_provision_job(name, provisioner_command, dependencies=[], create_pr_o
     needs: std.map(utils.slugify, dependencies),
     'runs-on': 'ubuntu-latest',
     [if create_pr_on_change then "permissions"]: {
-      # required for pushing to the repo
+      // required for pushing to the repo
       contents: 'write',
-      # required for creating pull requests
+      // required for creating pull requests
       'pull-requests': 'write',
+      // required for updating workflow files
+      workflows: 'write',
     },
     steps: common_init_steps + [
       {
