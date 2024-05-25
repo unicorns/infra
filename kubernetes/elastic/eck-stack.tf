@@ -131,7 +131,7 @@ resource "kubectl_manifest" "elasticsearch-es1" {
                 "accessModes" = ["ReadWriteOnce"]
                 "resources" = {
                   "requests" = {
-                    "storage" = "4Gi"
+                    "storage" = "8Gi"
                   }
                 }
               }
