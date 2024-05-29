@@ -185,6 +185,15 @@ local wrap_jobs(jobs) = jobs {
         |||,
         dependencies=['Update workflow'],
         requires_vault=true,
-      ),
+      )
+      + make_provision_job(
+        'Provision Kubernetes',
+        |||
+          docker compose run provisioner ./kubernetes/provision.py all
+        |||,
+        dependencies=['Update workflow'],
+        requires_vault=true,
+      )
+      ,
     ),
 }
