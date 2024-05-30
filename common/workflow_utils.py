@@ -7,7 +7,7 @@ import json
 
 from common.cli_utils import get_app
 
-PROVISIONERS = [p.parent.name for p in Path(__file__).parent.parent.glob("*/provision.py")]
+PROVISIONERS = sorted([p.parent.name for p in Path(__file__).parent.parent.glob("*/provision.py")])
 
 app = get_app()
 
