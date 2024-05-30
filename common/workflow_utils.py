@@ -4,10 +4,10 @@ from pathlib import Path
 
 import rjsonnet
 import json
-import yaml
-import sys
 
-from common.cli_utils import get_app, TyperOutputFormat, JSONSetEncoder
+from common.cli_utils import get_app
+
+PROVISIONERS = [p.parent.name for p in Path(__file__).parent.parent.glob("*/provision.py")]
 
 app = get_app()
 
@@ -19,15 +19,10 @@ def generate_provision_workflow(jsonnet_file: str):
         tla_codes={
             "provision_jobs": json.dumps([
                 {
-                    "name": "Provision GitHub",
-                    "command": "docker compose run provisioner ./github/provision.py all",
+                    "name": f"Provision {p}",
+                    "command": f"docker compose run provisioner ./{p}/provision.py all",
                     "requires_vault": True,
-                },
-                {
-                    "name": "Provision Kubernetes",
-                    "command": "docker compose run provisioner ./kubernetes/provision.py all",
-                    "requires_vault": True,
-                }
+                } for p in PROVISIONERS
             ])
         }
     )
