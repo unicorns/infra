@@ -34,7 +34,7 @@ jobs:
           fi
       - name: Update workflow
         run: |
-          docker compose run provisioner /bin/bash -c './common/workflow_utils.py --output-format raw generate-provision-workflow .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.yml'
+          docker compose run provisioner /bin/bash -c './common/workflow_utils.py --output-format raw generate-provision-workflow .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.generated.yml'
       - name: Create PR if there are changes
         id: create_pr
         uses: peter-evans/create-pull-request@6d6857d36972b65feb161a90e484f2984215f83e
