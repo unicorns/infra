@@ -7,7 +7,13 @@ import json
 
 from common.cli_utils import get_app
 
-PROVISIONERS = sorted([p.parent.name for p in Path(__file__).parent.parent.glob("*/provision.py")])
+PROVISIONERS = sorted([
+    p.parent.name for p in Path(__file__).parent.parent.glob("*/provision.py")
+    # Skip some provisioners in CI
+    if p.parent.name not in [
+        "vault", # requires elevated permissions
+    ]
+])
 
 app = get_app()
 
