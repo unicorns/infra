@@ -34,7 +34,7 @@ jobs:
           fi
       - name: Update workflow
         run: |
-          docker compose run provisioner /bin/bash -c 'jrsonnet --exp-preserve-order .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.yml'
+          docker compose run provisioner /bin/bash -c './common/workflow_utils.py --output-format raw generate-provision-workflow .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.yml'
       - name: Create PR if there are changes
         id: create_pr
         uses: peter-evans/create-pull-request@6d6857d36972b65feb161a90e484f2984215f83e
@@ -55,7 +55,7 @@ jobs:
           echo "Changes are required. Please refer to pull request #${{ steps.create_pr.outputs.pull-request-number }}"
           echo "Pull Request URL - ${{ steps.create_pr.outputs.pull-request-url }}"
           exit 1
-  dummy-test:
+  provision-azure:
     needs:
       - update-workflow
     runs-on: ubuntu-latest
@@ -85,9 +85,8 @@ jobs:
           else
             echo 'DRY_RUN=true' >> .env
           fi
-      - name: Dummy test
-        run: |
-          docker compose run provisioner env
+      - name: Provision azure
+        run: docker compose run provisioner ./azure/provision.py all
       - name: Revoke Vault token
         if: always()
         run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
@@ -121,9 +120,8 @@ jobs:
           else
             echo 'DRY_RUN=true' >> .env
           fi
-      - name: Provision GitHub
-        run: |
-          docker compose run provisioner ./github/provision.py all
+      - name: Provision github
+        run: docker compose run provisioner ./github/provision.py all
       - name: Revoke Vault token
         if: always()
         run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
@@ -157,17 +155,52 @@ jobs:
           else
             echo 'DRY_RUN=true' >> .env
           fi
-      - name: Provision Kubernetes
+      - name: Provision kubernetes
+        run: docker compose run provisioner ./kubernetes/provision.py all
+      - name: Revoke Vault token
+        if: always()
+        run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
+  provision-vault:
+    needs:
+      - update-workflow
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Set up Vault
+        uses: hashicorp/vault-action@d1720f055e0635fd932a1d2a48f87a666a57906c
+        with:
+          exportToken: true
+          method: jwt
+          url: ${{ vars.VAULT_ADDR }}
+          role: ${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}
+      - name: Checkout repository
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
+        with: {}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0
+      - name: Build the provisioner
+        run: docker compose build provisioner
+      - name: Set up environment variables
         run: |
-          docker compose run provisioner ./kubernetes/provision.py all
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo 'NO_CONFIRM=true' >> .env
+            echo 'BACK_UP_STATE=true' >> .env
+          else
+            echo 'DRY_RUN=true' >> .env
+          fi
+      - name: Provision vault
+        run: docker compose run provisioner ./vault/provision.py all
       - name: Revoke Vault token
         if: always()
         run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
   all-good:
     needs:
-      - dummy-test
+      - provision-azure
       - provision-github
       - provision-kubernetes
+      - provision-vault
       - update-workflow
     runs-on: ubuntu-latest
     if: always()

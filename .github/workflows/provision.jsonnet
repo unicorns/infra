@@ -96,7 +96,23 @@ local merge_perm_helper(acc, perm) =
 local merge_perms(perms) =
   std.foldl(merge_perm_helper, perms, {});
 
-local make_provision_job(name, provisioner_command, dependencies=[], create_pr_on_change=false, requires_vault=false) =
+local make_provision_job(spec) =
+  // Ensure that there are no invalid keys in the spec
+  local invalid_keys = std.setDiff(std.objectFields(spec), std.set([
+    'name',
+    'command',
+    'dependencies',
+    'create_pr_on_change',
+    'requires_vault',
+  ]));
+  assert std.length(invalid_keys) == 0 : 'Invalid keys in provision job spec: ' + std.toString(invalid_keys);
+
+  local name = spec.name;
+  local provisioner_command = spec.command;
+  local dependencies = std.set(std.get(spec, 'dependencies', []));
+  local create_pr_on_change = std.get(spec, 'create_pr_on_change', false);
+  local requires_vault = std.get(spec, 'requires_vault', false);
+
   local perms = merge_perms(
     (if create_pr_on_change then [{ k: 'pull-requests', v: 'write' }] else [])
     + (if requires_vault then [{ k: 'contents', v: 'read' }, { k: 'id-token', v: 'write' }] else [])
@@ -104,6 +120,7 @@ local make_provision_job(name, provisioner_command, dependencies=[], create_pr_o
 
   local vault_setup = if requires_vault then vault_setup_steps else [];
   local vault_cleanup = if requires_vault then vault_cleanup_steps else [];
+
 
   {
     [utils.slugify(name)]: {
@@ -144,7 +161,7 @@ local wrap_jobs(jobs) = jobs {
   },
 };
 
-{
+function(provision_jobs = []) {
   name: 'Provision',
   on: {
     push: {
@@ -163,37 +180,20 @@ local wrap_jobs(jobs) = jobs {
   concurrency: 'provision_concurrency_group-${{ github.event.pull_request.number || github.ref_name }}',
   jobs:
     wrap_jobs(
-      make_provision_job(
-        'Update workflow',
-        |||
-          docker compose run provisioner /bin/bash -c 'jrsonnet --exp-preserve-order .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.yml'
+      make_provision_job({
+        name: 'Update workflow',
+        command: |||
+          docker compose run provisioner /bin/bash -c './common/workflow_utils.py --output-format raw generate-provision-workflow .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.yml'
         |||,
-        create_pr_on_change=true,
-      )
-      + make_provision_job(
-        'Dummy test',
-        |||
-          docker compose run provisioner env
-        |||,
-        dependencies=['Update workflow'],
-        requires_vault=true,
-      )
-      + make_provision_job(
-        'Provision GitHub',
-        |||
-          docker compose run provisioner ./github/provision.py all
-        |||,
-        dependencies=['Update workflow'],
-        requires_vault=true,
-      )
-      + make_provision_job(
-        'Provision Kubernetes',
-        |||
-          docker compose run provisioner ./kubernetes/provision.py all
-        |||,
-        dependencies=['Update workflow'],
-        requires_vault=true,
-      )
-      ,
+        create_pr_on_change: true,
+      })
+      + std.foldl(
+        function(acc, job) acc + make_provision_job(job + {
+          // Inject mandatory dependencies
+          dependencies: std.get(job, 'dependencies', []) + ['Update workflow'],
+        }),
+        provision_jobs,
+        {},
+      ),
     ),
 }

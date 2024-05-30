@@ -11,3 +11,4 @@ pyotp>=2.9.0
 s3cmd>=2.4.0
 azure-data-tables>=12.5.0
 hvac>=2.2.0
+rjsonnet>=0.5.4
