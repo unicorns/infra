@@ -156,6 +156,46 @@ output "es1_elastic_user_password" {
   sensitive = true
 }
 
+variable "elasticsearch_host" {
+  type = string
+}
+
+resource "kubectl_manifest" "elasticsearch-es1-ingress" {
+  yaml_body = yamlencode({
+    "apiVersion" = "networking.k8s.io/v1"
+    "kind"       = "Ingress"
+    "metadata" = {
+      "name"      = "es1-ingress"
+      "namespace" = kubernetes_namespace.elastic-stack.metadata[0].name
+      "annotations" = {}
+    }
+    "spec" = {
+      "ingressClassName" = "nginx"
+      "rules" = [
+        {
+          "host" = var.elasticsearch_host
+          "http" = {
+            "paths" = [
+              {
+                "path" = "/"
+                "pathType" = "Prefix"
+                "backend" = {
+                  "service" = {
+                    "name" = "${yamldecode(kubectl_manifest.elasticsearch-es1.yaml_body).metadata.name}-es-http"
+                    "port" = {
+                      "name" = "http"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  })
+}
+
 locals {
   # Derived from https://github.com/elastic/cloud-on-k8s/blob/9dd6dfce933f811cfc307b14c0d2c60cb45c5fe0/config/recipes/elastic-agent/fleet-kubernetes-integration.yaml#L23-L34
   eck_fleet_server_policy = yamldecode(

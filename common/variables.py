@@ -1,4 +1,6 @@
+# All DNS records below are created manually to point to the cluster ingress IP.
 HASHICORP_VAULT_ADDR = "https://vault.benzhang.dev"
+ELASTICSEARCH_ADDR = "https://elasticsearch.benzhang.dev"
 KIBANA_ADDR = "https://kibana.benzhang.dev"
 
 # The secrets are obtained from:
