@@ -32,6 +32,20 @@ resource "vault_audit" "stdout" {
   }
 }
 
+# MARK: Mounts
+resource "vault_mount" "users" {
+  type = "kv-v2"
+  path = "users"
+  description = "A mount for user data"
+}
+
+resource "vault_mount" "sandbox" {
+  type = "kv-v2"
+  path = "sandbox"
+  description = "A mount for sandbox (dev) data"
+}
+
+# MARK: Auth backends
 resource "vault_auth_backend" "userpass" {
   type = "userpass"
 
@@ -41,13 +55,23 @@ resource "vault_auth_backend" "userpass" {
   }
 }
 
+# MARK: Policies
 # The provisioner-ro policy allows read access to all secrets.
 resource "vault_policy" "provisioner-ro" {
   name   = "provisioner-ro"
 
   policy = <<-EOF
+    # Read access to secrets
     path "secret/data/*" {
       capabilities = ["read"]
+    }
+
+    # Read access to user data
+    path "${vault_mount.users.path}/data/*" {
+      capabilities = ["read"]
+    }
+    path "${vault_mount.users.path}/metadata/*" {
+      capabilities = ["list"]
     }
     EOF
 }
@@ -58,14 +82,30 @@ resource "vault_policy" "provisioner-rw" {
   name   = "provisioner-rw"
 
   policy = <<-EOF
+    # Read access to secrets
     path "secret/data/*" {
       capabilities = ["read"]
     }
 
+    # Read access to user data
+    path "${vault_mount.users.path}/data/*" {
+      capabilities = ["read"]
+    }
+    path "${vault_mount.users.path}/metadata/*" {
+      capabilities = ["list"]
+    }
+
+    # Write access to userpass auth backend
+    path "auth/${vault_auth_backend.userpass.path}/users/*" {
+      capabilities = ["create", "read", "update", "delete"]
+    }
+
+    # Write access to outputs
     path "secret/data/outputs/*" {
       capabilities = ["create", "read", "update"]
     }
 
+    # Write access to state backups
     path "secret/data/states/*" {
       capabilities = ["create", "read", "update"]
     }
@@ -82,10 +122,10 @@ resource "vault_policy" "base-user" {
     }
 
     # Give users access to sandboxes where they have full control
-    path "secret/data/sandbox/{{identity.entity.aliases.${vault_auth_backend.userpass.accessor}.name}}/*" {
+    path "${vault_mount.sandbox.path}/data/users/{{identity.entity.aliases.${vault_auth_backend.userpass.accessor}.name}}/*" {
       capabilities = ["create", "read", "update", "patch", "delete"]
     }
-    path "secret/metadata/sandbox/{{identity.entity.aliases.${vault_auth_backend.userpass.accessor}.name}}/*" {
+    path "${vault_mount.sandbox.path}/metadata/users/{{identity.entity.aliases.${vault_auth_backend.userpass.accessor}.name}}/*" {
       capabilities = ["list", "delete"]
     }
 
@@ -111,32 +151,15 @@ resource "vault_policy" "base-user" {
     EOF
 }
 
-resource "random_password" "test-user-password" {
-  length = 16
+output "vault_policy_names" {
+  value = [
+    vault_policy.provisioner-ro.name,
+    vault_policy.provisioner-rw.name,
+    vault_policy.base-user.name,
+  ]
 }
 
-
-resource "vault_generic_endpoint" "test-user" {
-  path = "auth/${vault_auth_backend.userpass.path}/users/test-user"
-  ignore_absent_fields = true
-
-  data_json = jsonencode({
-    policies = [vault_policy.base-user.name]
-    password = random_password.test-user-password.result
-  })
-
-  lifecycle {
-    # Ignore changes in data_json because any changes will revert the password to the
-    # one set here (user password changes will be overwritten).
-    ignore_changes = [ data_json ]
-  }
-}
-
-output "test-user-password" {
-  value = random_password.test-user-password.result
-  sensitive = true
-}
-
+# MARK: JWT Auth Roles
 resource "vault_jwt_auth_backend" "github-actions" {
   description = "GitHub Actions JWT Auth"
   path = "jwt"

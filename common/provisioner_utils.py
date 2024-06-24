@@ -124,6 +124,7 @@ def run_terraform(tools: ProvisionerTools, vars_dict: dict, additional_init_args
         run_terraform_plan(tools.env, additional_plan_args)
     else:
         run_terraform_apply(tools.env, additional_apply_args + (["-auto-approve"] if os.environ.get('NO_CONFIRM') else []))
+        print("Checking whether to update output...")
         output = get_terraform_output(tools.env)
         update_output(tools, output, confirm=os.environ.get('NO_CONFIRM') != "true")
         if os.environ.get('BACK_UP_STATE'):
@@ -205,6 +206,7 @@ def make_terragrunt_command(script_path, project, package, get_global_vars_fn):
         run_terragrunt(tools=tools, project=project)
 
         # Get output
+        print("Checking whether to update output...")
         res = run_terragrunt_generic_with_project(tools.env, project, "output", ["-json"], subprocess_args={'capture_output': True, 'text': True})
         assert res.returncode == 0, f"Failed to get Terragrunt output for project '{project}': {res.stderr}"
         output = next(extract_json_objects(res.stdout))
@@ -375,7 +377,7 @@ def update_output(tools: ProvisionerTools, output: dict, subpath: str = None, co
     if dry_run:
         return diff
 
-    if confirm and not typer.confirm("Do you want to update the output?"):
+    if confirm and not typer.confirm("Do you want to update the output (may require elevated permissions)?"):
         return diff
 
     print("Applying output changes...")
