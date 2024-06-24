@@ -36,7 +36,7 @@ resource "elasticstack_elasticsearch_index_lifecycle" "logs" {
   name = "logs"
 
   metadata = jsonencode({
-    description = "default policy for the logs index template installed by x-pack"
+    description = "[Managed by Terraform] (Modified) default policy for the logs index template installed by x-pack"
     managed = true
   })
 
