@@ -62,7 +62,7 @@ resource "vault_generic_endpoint" "user_policies" {
 
   path = "auth/userpass/users/${each.key}"
   ignore_absent_fields = true
-  disable_delete = true # lifecycle managed by the user_passwords resource
+  disable_delete = true # the lifecycle of this auth method is managed by the user_passwords resource
 
   data_json = jsonencode({
     policies = local.users[each.key].policy_names
