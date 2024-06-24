@@ -32,16 +32,20 @@ variable "users" {
   sensitive = true
 }
 
+locals {
+  usernames = nonsensitive(toset([ for user in var.users : user.username ]))
+  users = { for user in var.users : user.username => user }
+}
 
-resource "vault_generic_endpoint" "users" {
-  for_each = { for user in nonsensitive(var.users) : user.username => user }
+resource "vault_generic_endpoint" "user_passwords" {
+  for_each = local.usernames
 
-  path = "auth/userpass/users/${each.value.username}"
+  path = "auth/userpass/users/${each.key}"
   ignore_absent_fields = true
+  disable_read = true # disable drift detection. We don't update this anyway.
 
   data_json = jsonencode({
-    policies = each.value.policy_names
-    password = each.value.initial_password
+    password = local.users[each.key].initial_password
   })
 
   lifecycle {
@@ -49,4 +53,18 @@ resource "vault_generic_endpoint" "users" {
     # one set here (user password changes will be overwritten).
     ignore_changes = [ data_json ]
   }
+}
+
+resource "vault_generic_endpoint" "user_policies" {
+  depends_on = [ vault_generic_endpoint.user_passwords ]
+
+  for_each = local.usernames
+
+  path = "auth/userpass/users/${each.key}"
+  ignore_absent_fields = true
+  disable_delete = true # the lifecycle of this auth method is managed by the user_passwords resource
+
+  data_json = jsonencode({
+    policies = local.users[each.key].policy_names
+  })
 }
