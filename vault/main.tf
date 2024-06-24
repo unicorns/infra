@@ -109,6 +109,13 @@ resource "vault_policy" "provisioner-rw" {
     path "secret/data/states/*" {
       capabilities = ["create", "read", "update"]
     }
+
+    # Allow creating child tokens. Otherwise we'll need to enable skip_child_token when using this policy with
+    # vault providers.
+    # https://support.hashicorp.com/hc/en-us/articles/360034820694-Parent-Child-Token-Hierarchy
+    path "auth/token/create" {
+      capabilities = ["create", "update"]
+    }
     EOF
 }
 
@@ -147,6 +154,13 @@ resource "vault_policy" "base-user" {
       allowed_parameters = {
         "password" = []
       }
+    }
+
+    # Allow creating child tokens. Otherwise we'll need to enable skip_child_token when using this policy with
+    # vault providers.
+    # https://support.hashicorp.com/hc/en-us/articles/360034820694-Parent-Child-Token-Hierarchy
+    path "auth/token/create" {
+      capabilities = ["create", "update"]
     }
     EOF
 }
