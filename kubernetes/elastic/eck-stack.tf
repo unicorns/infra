@@ -290,6 +290,11 @@ resource "kubectl_manifest" "kibana-kb1" {
       "podTemplate" = {
         "spec" = {
           "tolerations" = local.azure_spot_node_tolerations
+          "affinity" = {
+            "nodeAffinity" = {
+              "preferredDuringSchedulingIgnoredDuringExecution" = local.azure_spot_node_affinities
+            }
+          }
         }
       }
       "version" = "8.13.4"
@@ -426,6 +431,9 @@ resource "kubectl_manifest" "es1-fleet-server" {
             securityContext:
               runAsUser: 0
             tolerations: ${jsonencode(local.azure_spot_node_tolerations)}
+            affinity:
+              nodeAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution: ${jsonencode(local.azure_spot_node_affinities)}
     EOF
 }
 

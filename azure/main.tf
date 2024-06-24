@@ -55,15 +55,26 @@ resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
     name       = "default"
     node_count = 2
     # 2 vCPU, 4 GiB RAM. 8 GiB temp disk. 30 GiB cache. $378.43/year.
-    vm_size    = "Standard_B2s"
+    # vm_size    = "Standard_B2s"
+    # 2 vCPU, 4 GiB RAM. No temp disk. Does not support ephemeral OS disk. $602.69/year.
+    vm_size    = "Standard_B2ps_v2"
+    # 2 vCPU, 8 GiB RAM. 16 GiB temp disk. 30 GiB cache. $756.86/year.
+    # vm_size    = "Standard_B2ms"
 
     # vm_size    = "Standard_E2as_v4"
     
     # Reduce the OS disk size so that it can fit in VMs with
     # smaller cache or temporary disk sizes. The minimum is 30 GB.
     # https://learn.microsoft.com/en-us/azure/aks/cluster-configuration#use-ephemeral-os-on-existing-clusters
-    os_disk_size_gb = 30
-    os_disk_type = "Ephemeral"
+    # os_disk_size_gb = 30
+    # os_disk_type = "Ephemeral"
+    # For VMs that don't support ephemeral OS disk, use managed disk.
+    # The OS disks are placed on "Premium SSD" storage:
+    # https://learn.microsoft.com/en-us/azure/aks/concepts-clusters-workloads#default-os-disk-sizing
+    # Pricing:
+    # https://azure.microsoft.com/en-ca/pricing/details/managed-disks/
+    os_disk_size_gb = 32
+    os_disk_type = "Managed"
 
     # Use temporary disk instead of the OS disk for emptyDir volumes.
     # https://github.com/hashicorp/terraform-provider-azurerm/issues/15449
