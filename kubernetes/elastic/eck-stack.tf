@@ -110,10 +110,10 @@ resource "kubectl_manifest" "elasticsearch-es1" {
                   # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-managing-compute-resources.html#k8s-compute-resources
                   "resources" = {
                     "limits" = {
-                      "memory" = "4Gi"
+                      "memory" = "8Gi"
                     }
                     "requests" = {
-                      "memory" = "2Gi"
+                      "memory" = "4Gi"
                     }
                   }
                 }
@@ -546,6 +546,13 @@ resource "kubectl_manifest" "es1-elastic-agent" {
               volumeMounts:
               - mountPath: /var/log
                 name: varlog
+              resources:
+                requests:
+                  memory: 1Gi
+                  cpu: 200m
+                limits:
+                  memory: 2Gi
+                  cpu: 400m
             volumes:
             - name: varlog
               hostPath:
