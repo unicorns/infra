@@ -8,4 +8,18 @@ locals {
             effect   = "NoSchedule"
         }
     ]
+    azure_spot_node_affinities = [
+        {
+            weight = 1
+            preference = {
+                matchExpressions = [
+                    {
+                        key      = "kubernetes.azure.com/scalesetpriority"
+                        operator = "In"
+                        values   = ["spot"]
+                    }
+                ]
+            }
+        }
+    ]
 }
