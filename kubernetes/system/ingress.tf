@@ -20,12 +20,6 @@ resource "helm_release" "ingress_nginx" {
           service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /healthz
       metrics:
         enabled: true
-    defaultBackend:
-      enabled: true
-      image:
-        registry: registry.k8s.io
-        image: ingress-nginx/nginx-errors
-        tag: "v20230404-helm-chart-4.6.0-11-gc76179c04@sha256:aabd7a001f6a0a07ed6ea8f6da87e928bfa8f971eba2bef708f3e8504fc5cc9b"
   EOF
   ]
 }
