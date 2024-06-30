@@ -113,7 +113,7 @@ resource "kubectl_manifest" "elasticsearch-es1" {
                       "memory" = "4Gi"
                     }
                     "requests" = {
-                      "memory" = "4Gi"
+                      "memory" = "2Gi"
                     }
                   }
                 }
