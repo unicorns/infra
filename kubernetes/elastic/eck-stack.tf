@@ -110,7 +110,7 @@ resource "kubectl_manifest" "elasticsearch-es1" {
                   # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-managing-compute-resources.html#k8s-compute-resources
                   "resources" = {
                     "limits" = {
-                      "memory" = "6Gi"
+                      "memory" = "4Gi"
                     }
                     "requests" = {
                       "memory" = "4Gi"
