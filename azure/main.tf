@@ -45,15 +45,28 @@ resource "azurerm_resource_group" "unicorns-aks1" {
   location = "Sweden Central"
 }
 
+locals {
+  kubernetes_version = "1.29.5"
+}
+
 resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
   name                = "unicorns-aks1"
   location            = azurerm_resource_group.unicorns-aks1.location
   resource_group_name = azurerm_resource_group.unicorns-aks1.name
   dns_prefix          = "unicorns-aks1"
 
+  kubernetes_version = local.kubernetes_version
+
   default_node_pool {
     name       = "default"
     node_count = 2
+
+    orchestrator_version = local.kubernetes_version
+
+    # The maximum number of pods affects memory reservation in AKS 1.29 or later.
+    # https://learn.microsoft.com/en-us/azure/aks/node-resource-reservations#memory-reservations
+    max_pods = 30
+
     # 2 vCPU, 4 GiB RAM. 8 GiB temp disk. 30 GiB cache. $378.43/year.
     # vm_size    = "Standard_B2s"
     # 2 vCPU, 4 GiB RAM. No temp disk. Does not support ephemeral OS disk. $602.69/year.
@@ -118,6 +131,8 @@ locals {
 
 resource "azurerm_kubernetes_cluster_node_pool" "spot2" {
   name = "spot2"
+  
+  orchestrator_version = local.kubernetes_version
   kubernetes_cluster_id = azurerm_kubernetes_cluster.unicorns-aks1.id
   # vm_size = "Standard_B2ats_v2" # 2vCPU, 1GiB RAM, does not support ephemeral OS disk. Appears to be unsupported in AKS due to low RAM (node does not start in node pool).
   # vm_size = "Standard_D2as_v5" # 2vCPU, 8GiB RAM, does not support ephemeral OS disk
@@ -158,6 +173,8 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot2" {
 
 resource "azurerm_kubernetes_cluster_node_pool" "spot4" {
   name = "spot4"
+
+  orchestrator_version = local.kubernetes_version
   kubernetes_cluster_id = azurerm_kubernetes_cluster.unicorns-aks1.id
   # vm_size = "Standard_B2ats_v2" # 2vCPU, 1GiB RAM, does not support ephemeral OS disk. Appears to be unsupported in AKS due to low RAM (node does not start in node pool).
   # vm_size = "Standard_D2as_v5" # 2vCPU, 8GiB RAM, does not support ephemeral OS disk
