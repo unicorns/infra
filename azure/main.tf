@@ -188,8 +188,8 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot4" {
   # vm_size = "Standard_D2pds_v5" # 2vCPU, 8GiB RAM, 75 GiB temp disk, 50 GiB cache. Spot price $84.096/year in Sweden Central.
   # vm_size = "Standard_E2pds_v5" # 2vCPU, 16GiB RAM, 75 GiB temp disk, 50 GiB cache. Does not support spot VMs
   # vm_size = "Standard_E2ps_v5" # 2vCPU, 16GiB RAM, no temp disk, 50 GiB cache. Doesn't support ephemeral OS disk. Spot price $93.732/year in Sweden Central.
-  # vm_size = "Standard_E2a_v4" # 2vCPU, 16GiB RAM, 50 GiB temp disk, no cache. Spot price $117.47/year in Sweden Central.
-  vm_size = "Standard_E2as_v4" # 2vCPU, 16GiB RAM, 32 GiB temp disk, 50 GiB cache. Spot price $117.47/year in Sweden Central.
+  # vm_size = "Standard_E2a_v4" # 2vCPU, 16GiB RAM, 50 GiB temp disk, no cache. Spot price $155.05/year in Sweden Central.
+  vm_size = "Standard_E2as_v4" # 2vCPU, 16GiB RAM, 32 GiB temp disk, 50 GiB cache. Spot price $155.05/year in Sweden Central.
 
   os_disk_size_gb = 50 # minimum is 30.
   os_disk_type = "Ephemeral" # when using ephemeral OS disk, the disk will be placed in cache if there's room. If not, it will be placed in temp disk.
@@ -198,7 +198,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot4" {
 
   priority = "Spot"
   eviction_policy = "Delete"
-  spot_max_price = format("%.5f", (117.47 * local.annual_spot_cost_multiplier) / 12 / local.azure_hours_per_month) # max price per hour. Rounding because the provider only accepts 5 decimal places.
+  spot_max_price = format("%.5f", (155.05 * local.annual_spot_cost_multiplier) / 12 / local.azure_hours_per_month) # max price per hour. Rounding because the provider only accepts 5 decimal places.
   node_taints = [
     "kubernetes.azure.com/scalesetpriority=spot:NoSchedule", # required for spot nodes. 
   ]
