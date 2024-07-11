@@ -151,6 +151,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot2" {
   os_disk_size_gb = 50
   os_disk_type = "Ephemeral"
   kubelet_disk_type = "Temporary" # use the temp disk for emptyDir volumes. If not set, use the OS disk.
+  max_pods = 30
 
   priority = "Spot"
   eviction_policy = "Delete"
@@ -193,6 +194,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot4" {
   os_disk_size_gb = 50 # minimum is 30.
   os_disk_type = "Ephemeral" # when using ephemeral OS disk, the disk will be placed in cache if there's room. If not, it will be placed in temp disk.
   kubelet_disk_type = "Temporary" # use the temp disk for emptyDir volumes. If not set, use the OS disk.
+  max_pods = 60
 
   priority = "Spot"
   eviction_policy = "Delete"
