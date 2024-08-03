@@ -197,6 +197,15 @@ resource "kubectl_manifest" "elasticsearch-es1-ingress" {
 }
 
 locals {
+  # Packge policy schema:
+  # https://github.com/elastic/kibana/blob/d887763f0ee08257db8a6838cdab94f075b95619/x-pack/plugins/fleet/server/types/models/preconfiguration.ts#L144
+  # Note that preconfigured policies cannot be changed here after they are created:
+  # https://discuss.elastic.co/t/how-to-update-preconfigured-fleet-agent-policies/337801
+  # https://github.com/elastic/kibana/issues/111401
+  # To change these policies, use the API/elasticstack Terraform provider:
+  # https://registry.terraform.io/providers/elastic/elasticstack/latest/docs/resources/fleet_agent_policy
+  # https://registry.terraform.io/providers/elastic/elasticstack/latest/docs/resources/fleet_integration_policy
+
   # Derived from https://github.com/elastic/cloud-on-k8s/blob/9dd6dfce933f811cfc307b14c0d2c60cb45c5fe0/config/recipes/elastic-agent/fleet-kubernetes-integration.yaml#L23-L34
   eck_fleet_server_policy = yamldecode(
     <<-EOF
