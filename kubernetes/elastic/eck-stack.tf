@@ -458,7 +458,7 @@ resource "kubernetes_cluster_role" "elastic-agent" {
 
   rule {
     api_groups = [""]
-    resources = ["pods", "nodes", "namespaces", "events", "services", "configmaps", "persistentvolumes"]
+    resources = ["pods", "nodes", "namespaces", "events", "services", "configmaps", "persistentvolumes", "persistentvolumeclaims"]
     verbs     = ["get", "watch", "list"]
   }
 
