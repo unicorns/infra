@@ -458,7 +458,7 @@ resource "kubernetes_cluster_role" "elastic-agent" {
 
   rule {
     api_groups = [""]
-    resources = ["pods", "nodes", "namespaces", "events", "services", "configmaps"]
+    resources = ["pods", "nodes", "namespaces", "events", "services", "configmaps", "persistentvolumes", "persistentvolumeclaims"]
     verbs     = ["get", "watch", "list"]
   }
 
@@ -481,7 +481,13 @@ resource "kubernetes_cluster_role" "elastic-agent" {
 
   rule {
     api_groups = ["apps"]
-    resources  = ["statefulsets", "deployments", "replicasets"]
+    resources  = ["statefulsets", "deployments", "replicasets", "daemonsets"]
+    verbs      = ["get", "list", "watch"]
+  }
+
+  rule {
+    api_groups = ["storage.k8s.io"]
+    resources  = ["storageclasses"]
     verbs      = ["get", "list", "watch"]
   }
 
@@ -493,7 +499,7 @@ resource "kubernetes_cluster_role" "elastic-agent" {
 
   rule {
     api_groups = ["batch"]
-    resources  = ["jobs"]
+    resources  = ["jobs", "cronjobs"]
     verbs      = ["get", "list", "watch"]
   }
 }
