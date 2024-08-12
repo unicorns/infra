@@ -447,6 +447,15 @@ resource "kubectl_manifest" "es1-fleet-server" {
             affinity:
               nodeAffinity:
                 preferredDuringSchedulingIgnoredDuringExecution: ${jsonencode(local.azure_spot_node_affinities)}
+            containers:
+            - name: agent
+              resources:
+                requests:
+                  memory: 200Mi
+                  cpu: 10m
+                limits:
+                  memory: 500Mi
+                  cpu: 100m
     EOF
 }
 
