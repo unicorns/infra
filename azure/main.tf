@@ -46,7 +46,7 @@ resource "azurerm_resource_group" "unicorns-aks1" {
 }
 
 locals {
-  kubernetes_version = "1.29.5"
+  kubernetes_version = "1.30.3"
 }
 
 resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
@@ -59,7 +59,7 @@ resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
 
   default_node_pool {
     name       = "default"
-    node_count = 2
+    node_count = 1
 
     orchestrator_version = local.kubernetes_version
 
@@ -121,6 +121,16 @@ resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
     skip_nodes_with_system_pods = false
     # Support deleting nodes with local storage (emptyDir or localPath volumes)
     skip_nodes_with_local_storage = false
+  }
+
+  node_os_channel_upgrade = "NodeImage"
+  maintenance_window_node_os {
+    frequency = "Weekly"
+    interval = 1
+    duration = 4 # hours
+    day_of_week = "Sunday"
+
+    start_time = "09:00" # UTC. This is 2 AM PDT or 1 AM PST.
   }
 }
 
