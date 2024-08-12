@@ -69,7 +69,7 @@ resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
 
     # 2 vCPU, 4 GiB RAM. 8 GiB temp disk. 30 GiB cache. $378.43/year.
     # vm_size    = "Standard_B2s"
-    # 2 vCPU, 4 GiB RAM. No temp disk. Does not support ephemeral OS disk. $602.69/year.
+    # 2 vCPU, 8 GiB RAM. No temp disk. Does not support ephemeral OS disk. $602.69/year.
     vm_size    = "Standard_B2ps_v2"
     # 2 vCPU, 8 GiB RAM. 16 GiB temp disk. 30 GiB cache. $756.86/year.
     # vm_size    = "Standard_B2ms"
