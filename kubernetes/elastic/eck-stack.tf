@@ -36,6 +36,10 @@ resource "kubernetes_daemonset" "max-map-count-setter" {
           name = "max-map-count-setter"
           image = "docker.io/bash:5.2.21"
           resources {
+            requests = {
+              cpu    = "1m"
+              memory = "8Mi"
+            }
             limits = {
               cpu    = "100m"
               memory = "32Mi"
@@ -572,7 +576,7 @@ resource "kubectl_manifest" "es1-elastic-agent" {
               resources:
                 requests:
                   memory: 1Gi
-                  cpu: 200m
+                  cpu: 100m
                 limits:
                   memory: 2Gi
                   cpu: 400m
