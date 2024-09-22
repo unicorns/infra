@@ -64,6 +64,33 @@ import {
   id = "${data.elasticstack_elasticsearch_info.cluster_info.cluster_uuid}/logs"
 }
 
+resource "elasticstack_elasticsearch_index_lifecycle" "metrics" {
+    name = "metrics"
+
+    metadata = jsonencode({
+      description = "[Managed by Terraform] (Modified) default policy for the metrics index template installed by x-pack"
+      managed     = true
+    })
+
+    hot {
+      min_age = "0ms"
+
+      rollover {
+        max_age                = "30d"
+        max_primary_shard_size = "50gb"
+      }
+    }
+
+    delete {
+      min_age = "30d"
+      delete {}
+    }
+}
+import {
+  to = elasticstack_elasticsearch_index_lifecycle.metrics
+  id = "${data.elasticstack_elasticsearch_info.cluster_info.cluster_uuid}/metrics"
+}
+
 resource "elasticstack_fleet_integration" "kubernetes" {
   name    = "kubernetes"
   version = "1.58.0"
