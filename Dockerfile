@@ -34,6 +34,14 @@ RUN cd /opt \
 
 FROM bitnami/kubectl:1.26.1 as kubectl
 
+# This stage is used to keep the cache valid across different systems (even when the file permissions change).
+# Use this stage as a courier to copy files from the build context to the image.
+# Derived from:
+# https://github.com/devcontainers/cli/issues/153#issuecomment-1278293424
+FROM scratch AS courier
+
+COPY --chmod=400 requirements.txt /
+
 FROM debian:bookworm-20231030-slim
 
 SHELL ["/bin/bash", "-c"]
@@ -77,8 +85,8 @@ RUN wget --quiet https://releases.hashicorp.com/vault/1.16.2/vault_1.16.2_linux_
     && rm /tmp/vault.zip
 
 # Install Python dependencies
-COPY requirements.txt .
-RUN pip install -r requirements.txt --break-system-packages
+COPY --from=courier /requirements.txt /tmp/
+RUN python3 -m pip install -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
 # Copy Terraform-related files
 COPY --from=godeps /opt/terraform-registry /usr/share/terraform/plugins
