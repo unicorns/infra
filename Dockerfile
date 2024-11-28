@@ -1,4 +1,4 @@
-FROM golang:1.22.2-bookworm as godeps
+FROM golang:1.22.2-bookworm AS godeps
 
 # Install custom Terraform Google Workspace provider
 # Work around for issues:
@@ -32,7 +32,7 @@ RUN cd /opt \
     && git checkout 685aa0125e3ed40b57dd2d152526b2394c8be9e8 \
     && go install .
 
-FROM bitnami/kubectl:1.26.1 as kubectl
+FROM bitnami/kubectl:1.26.1 AS kubectl
 
 # This stage is used to keep the cache valid across different systems (even when the file permissions change).
 # Use this stage as a courier to copy files from the build context to the image.
