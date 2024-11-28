@@ -4,6 +4,8 @@ services:
       context: .
       cache_from:
         - type=registry,ref=ghcr.io/unicorns/infra:buildcache
+      platforms:
+        - linux/amd64
     volumes:
       - .:/${COMPOSE_PROJECT_NAME:?}:ro
       # The output directory is mounted as rw so that the provisioner can write
