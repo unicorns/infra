@@ -21,3 +21,48 @@ This repository contains various provisioners. The provisioners depend on the fo
 ## Users
 
 Users can be created by an administrator by adding a record into the `users` kv2 mount and then running the `users` provisioner.
+
+## Secrets
+
+We host a [HashiCorp Vault](https://www.vaultproject.io/) server on Azure Kubernetes.
+
+To put a secret into Vault:
+
+```sh
+./vault/vault_utils.py put-secret path/to/secret '{"mykey1": "mysecret1", "mykey2": "mysecret2"}'
+```
+
+To get a secret from Vault:
+
+```sh
+./vault/vault_utils.py --output-format=json get-secret path/to/secret 
+# Output:
+# {
+#     "mykey1": "mysecret1",
+#     "mykey2": "mysecret2"
+# }
+```
+
+To get a specific key from a secret:
+
+```sh
+./vault/vault_utils.py --output-format=json get-secret path/to/secret --key mykey1
+# Output:
+# "mysecret1"
+./vault/vault_utils.py --output-format=raw get-secret path/to/secret --key mykey1
+# Output (raw, useful for using secrets in scripts):
+# mysecret1
+```
+
+To delete a secret:
+
+```sh
+./vault/vault_utils.py delete-secret path/to/secret
+```
+
+If the Vault server restarts, we will need to unseal the server. This can be done by running:
+```sh
+./vault/vault_utils.py unseal <unseal-key1> [unseal-key2] [unseal-key3]
+```
+
+The vault is configured to require 3 unseal keys. They can be provided in different invocations of the command.
