@@ -2,8 +2,8 @@
 
 # This file sets up the kubeconfig file for accessing the kubernetes cluster.
 # Example usage:
-# python3 ./kubernetes/run.py -- k9s --all-namespaces
-# python3 ./kubernetes/run.py -- kubectl get namespaces
+# python3 ./kubernetes-aks2/run.py -- k9s --all-namespaces
+# python3 ./kubernetes-aks2/run.py -- kubectl get namespaces
 
 import os
 import subprocess
@@ -18,7 +18,7 @@ app = typer.Typer()
 @app.command()
 def main(cmd_args: list[str]):
     vault_client = get_vault_client()
-    kubeconfig = vault_client.secrets.kv.v2.read_secret(path="outputs/azure")["data"]["data"]["aks1_kube_config"]["value"]
+    kubeconfig = vault_client.secrets.kv.v2.read_secret(path="outputs/azure")["data"]["data"]["aks2_kube_config"]["value"]
 
     with tempfile.NamedTemporaryFile(mode="w") as f:
         f.write(kubeconfig)
