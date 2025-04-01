@@ -195,7 +195,7 @@ jobs:
       - name: Revoke Vault token
         if: always()
         run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
-  provision-kubernetesaks2:
+  provision-kubernetes-aks2:
     needs:
       - update-workflow
     runs-on: ubuntu-latest
@@ -271,7 +271,7 @@ jobs:
       - provision-elastic
       - provision-github
       - provision-kubernetes
-      - provision-kubernetesaks2
+      - provision-kubernetes-aks2
       - provision-users
       - update-workflow
     runs-on: ubuntu-latest
