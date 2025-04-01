@@ -2,8 +2,8 @@
 
 # This file sets up the kubeconfig file for accessing the kubernetes cluster.
 # Example usage:
-# python3 ./kubernetes/run.py -- k9s --all-namespaces
-# python3 ./kubernetes/run.py -- kubectl get namespaces
+# python3 ./kubernetes-aks2/run.py -- k9s --all-namespaces
+# python3 ./kubernetes-aks2/run.py -- kubectl get namespaces
 
 import os
 import subprocess
