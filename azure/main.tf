@@ -39,3 +39,8 @@ provider "azurerm" {
   tenant_id     = var.app_tenant_id
   client_secret = var.app_client_secret
 }
+
+locals {
+  azure_hours_per_month = 730
+  annual_spot_cost_multiplier = 1.3 # this is used to account for fluctuations in spot prices and numerical precision errors.
+}

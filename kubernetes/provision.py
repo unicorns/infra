@@ -8,8 +8,8 @@ from common.provisioner_utils import ProvisionerTools, make_terragrunt_app
 
 
 def get_vars(tools: ProvisionerTools):
-    kubernetes_cluster_name = tools.vault_client.secrets.kv.v2.read_secret(path="outputs/azure")["data"]["data"]["kubernetes_cluster_name"]['value']
-    kubeconfig = tools.vault_client.secrets.kv.v2.read_secret(path="outputs/azure")["data"]["data"]["kube_config"]["value"]
+    kubernetes_cluster_name = tools.vault_client.secrets.kv.v2.read_secret(path="outputs/azure")["data"]["data"]["aks1_cluster_name"]['value']
+    kubeconfig = tools.vault_client.secrets.kv.v2.read_secret(path="outputs/azure")["data"]["data"]["aks1_kube_config"]["value"]
     with open(tools.env.PROV_RUN_DIR / "kubeconfig", "w") as f:
         f.write(kubeconfig)
 

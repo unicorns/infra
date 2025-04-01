@@ -4,7 +4,7 @@ resource "azurerm_resource_group" "unicorns-aks1" {
 }
 
 locals {
-  kubernetes_version = "1.30.3"
+  aks1_kubernetes_version = "1.30.3"
 }
 
 resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
@@ -13,13 +13,13 @@ resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
   resource_group_name = azurerm_resource_group.unicorns-aks1.name
   dns_prefix          = "unicorns-aks1"
 
-  kubernetes_version = local.kubernetes_version
+  kubernetes_version = local.aks1_kubernetes_version
 
   default_node_pool {
     name       = "default"
     node_count = 1
 
-    orchestrator_version = local.kubernetes_version
+    orchestrator_version = local.aks1_kubernetes_version
 
     # The maximum number of pods affects memory reservation in AKS 1.29 or later.
     # https://learn.microsoft.com/en-us/azure/aks/node-resource-reservations#memory-reservations
@@ -92,15 +92,10 @@ resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
   }
 }
 
-locals {
-  azure_hours_per_month = 730
-  annual_spot_cost_multiplier = 1.3 # this is used to account for fluctuations in spot prices and numerical precision errors.
-}
-
-resource "azurerm_kubernetes_cluster_node_pool" "spot2" {
-  name = "spot2"
+resource "azurerm_kubernetes_cluster_node_pool" "aks1spot2" {
+  name = "aks1spot2"
   
-  orchestrator_version = local.kubernetes_version
+  orchestrator_version = local.aks1_kubernetes_version
   kubernetes_cluster_id = azurerm_kubernetes_cluster.unicorns-aks1.id
   # vm_size = "Standard_B2ats_v2" # 2vCPU, 1GiB RAM, does not support ephemeral OS disk. Appears to be unsupported in AKS due to low RAM (node does not start in node pool).
   # vm_size = "Standard_D2as_v5" # 2vCPU, 8GiB RAM, does not support ephemeral OS disk
@@ -140,10 +135,10 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot2" {
   }
 }
 
-resource "azurerm_kubernetes_cluster_node_pool" "spot4" {
-  name = "spot4"
+resource "azurerm_kubernetes_cluster_node_pool" "aks1spot4" {
+  name = "aks1spot4"
 
-  orchestrator_version = local.kubernetes_version
+  orchestrator_version = local.aks1_kubernetes_version
   kubernetes_cluster_id = azurerm_kubernetes_cluster.unicorns-aks1.id
   # vm_size = "Standard_B2ats_v2" # 2vCPU, 1GiB RAM, does not support ephemeral OS disk. Appears to be unsupported in AKS due to low RAM (node does not start in node pool).
   # vm_size = "Standard_D2as_v5" # 2vCPU, 8GiB RAM, does not support ephemeral OS disk
@@ -183,11 +178,11 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot4" {
   }
 }
 
-output "kubernetes_cluster_name" {
+output "aks1_cluster_name" {
   value = azurerm_kubernetes_cluster.unicorns-aks1.name
 }
 
-output "kube_config" {
+output "aks1_kube_config" {
   value     = azurerm_kubernetes_cluster.unicorns-aks1.kube_config_raw
   sensitive = true
 }
