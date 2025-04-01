@@ -24,6 +24,8 @@ Users can be created by an administrator by adding a record into the `users` kv2
 
 ## Secrets
 
+We host a [HashiCorp Vault](https://www.vaultproject.io/) server on Azure Kubernetes.
+
 To put a secret into Vault:
 
 ```sh
@@ -57,3 +59,10 @@ To delete a secret:
 ```sh
 ./vault/vault_utils.py delete-secret path/to/secret
 ```
+
+If the Vault server restarts, we will need to unseal the server. This can be done by running:
+```sh
+./vault/vault_utils.py unseal <unseal-key1> [unseal-key2] [unseal-key3]
+```
+
+The vault is configured to require 3 unseal keys. They can be provided in different invocations of the command.
