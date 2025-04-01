@@ -6,10 +6,11 @@
     // Convert string to array of characters
     local chars = std.stringChars(lowercase);
 
-    // Define allowed characters (alphanumeric and space)
+    // Define allowed characters (alphanumeric, dash, and space)
     local isAllowed = function(c) (
       (c >= '0' && c <= '9') ||
       (c >= 'a' && c <= 'z') ||
+      c == '-' ||
       c == ' '
     );
 
