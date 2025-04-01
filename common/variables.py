@@ -2,6 +2,7 @@
 HASHICORP_VAULT_ADDR = "https://vault.benzhang.dev"
 ELASTICSEARCH_ADDR = "https://elasticsearch.benzhang.dev"
 KIBANA_ADDR = "https://kibana.benzhang.dev"
+GATE_CONTROLLER_CLOUD_V3_ADDR = "https://gate-controller-cloud-v3.benzhang.dev"
 
 # The secrets are obtained from:
 # https://github.com/organizations/unicorns/settings/apps/infrastructure-provisioner
