@@ -21,3 +21,39 @@ This repository contains various provisioners. The provisioners depend on the fo
 ## Users
 
 Users can be created by an administrator by adding a record into the `users` kv2 mount and then running the `users` provisioner.
+
+## Secrets
+
+To put a secret into Vault:
+
+```sh
+./vault/vault_utils.py put-secret path/to/secret '{"mykey1": "mysecret1", "mykey2": "mysecret2"}'
+```
+
+To get a secret from Vault:
+
+```sh
+./vault/vault_utils.py --output-format=json get-secret path/to/secret 
+# Output:
+# {
+#     "mykey1": "mysecret1",
+#     "mykey2": "mysecret2"
+# }
+```
+
+To get a specific key from a secret:
+
+```sh
+./vault/vault_utils.py --output-format=json get-secret path/to/secret --key mykey1
+# Output:
+# "mysecret1"
+./vault/vault_utils.py --output-format=raw get-secret path/to/secret --key mykey1
+# Output (raw, useful for using secrets in scripts):
+# mysecret1
+```
+
+To delete a secret:
+
+```sh
+./vault/vault_utils.py delete-secret path/to/secret
+```
