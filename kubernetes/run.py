@@ -18,7 +18,7 @@ app = typer.Typer()
 @app.command()
 def main(cmd_args: list[str]):
     vault_client = get_vault_client()
-    kubeconfig = vault_client.secrets.kv.v2.read_secret(path="outputs/azure")["data"]["data"]["kube_config"]["value"]
+    kubeconfig = vault_client.secrets.kv.v2.read_secret(path="outputs/azure")["data"]["data"]["aks1_kube_config"]["value"]
 
     with tempfile.NamedTemporaryFile(mode="w") as f:
         f.write(kubeconfig)

@@ -67,6 +67,8 @@ resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
 
     upgrade_settings {
       max_surge = "10%"
+      drain_timeout_in_minutes = 30
+      node_soak_duration_in_minutes = 0
     }
   }
 
@@ -81,8 +83,10 @@ resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
     skip_nodes_with_local_storage = false
   }
 
-  node_os_channel_upgrade = "NodeImage"
+  node_os_upgrade_channel = "NodeImage"
   maintenance_window_node_os {
+    utc_offset = "+00:00"
+
     frequency = "Weekly"
     interval = 1
     duration = 4 # hours
@@ -92,8 +96,8 @@ resource "azurerm_kubernetes_cluster" "unicorns-aks1" {
   }
 }
 
-resource "azurerm_kubernetes_cluster_node_pool" "aks1spot2" {
-  name = "aks1spot2"
+resource "azurerm_kubernetes_cluster_node_pool" "aks1spot1" {
+  name = "aks1spot1"
   
   orchestrator_version = local.aks1_kubernetes_version
   kubernetes_cluster_id = azurerm_kubernetes_cluster.unicorns-aks1.id
@@ -105,7 +109,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "aks1spot2" {
   # vm_size = "Standard_D2ads_v5" # 2vCPU, 8GiB RAM, 75 GiB temp disk, 0 GiB cache. Spot price $115.63/year in Sweden Central.
   # vm_size = "Standard_E2as_v5" # Does not support ephemeral OS disk.
   # vm_size = "Standard_B4ms" # 4vCPU, 16GiB RAM, 32 GiB temp disk, 0 GiB cache.
-  vm_size = "Standard_D2pds_v5" # 2vCPU, 8GiB RAM, 75 GiB temp disk, 50 GiB cache. Spot price $84.096/year in Sweden Central.
+  vm_size = "Standard_D2pds_v5" # 2vCPU, 8GiB RAM, 75 GiB temp disk, 50 GiB cache. Spot price $117.73/year in Sweden Central.
   # vm_size = "Standard_E2pds_v5" # 2vCPU, 16GiB RAM, 75 GiB temp disk, 50 GiB cache. Does not support spot VMs
   # vm_size = "Standard_E2ps_v5" # 2vCPU, 16GiB RAM, no temp disk, 50 GiB cache. Doesn't support ephemeral OS disk. Spot price $93.732/year in Sweden Central.
   # vm_size = "Standard_E2a_v4" # 2vCPU, 16GiB RAM, 50 GiB temp disk, no cache. Spot price $117.47/year in Sweden Central.
@@ -118,12 +122,12 @@ resource "azurerm_kubernetes_cluster_node_pool" "aks1spot2" {
 
   priority = "Spot"
   eviction_policy = "Delete"
-  spot_max_price = format("%.5f", (84.096 * local.annual_spot_cost_multiplier) / 12 / local.azure_hours_per_month) # max price per hour. Rounding because the provider only accepts 5 decimal places.
+  spot_max_price = format("%.5f", (117.73 * local.annual_spot_cost_multiplier) / 12 / local.azure_hours_per_month) # max price per hour. Rounding because the provider only accepts 5 decimal places.
   node_taints = [
     "kubernetes.azure.com/scalesetpriority=spot:NoSchedule", # required for spot nodes. 
   ]
 
-  enable_auto_scaling = true
+  auto_scaling_enabled = true
   min_count = 0
   max_count = 2
 
@@ -166,7 +170,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "aks1spot4" {
     "kubernetes.azure.com/scalesetpriority=spot:NoSchedule", # required for spot nodes. 
   ]
 
-  enable_auto_scaling = true
+  auto_scaling_enabled = true
   min_count = 0
   max_count = 2
 
