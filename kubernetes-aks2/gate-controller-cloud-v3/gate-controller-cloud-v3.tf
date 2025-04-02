@@ -61,7 +61,7 @@ resource "kubernetes_deployment_v1" "gate-controller-cloud-v3" {
       spec {
         container {
           name = "gate-controller-cloud-v3"
-          image = "ghcr.io/ben-z/gate-controller/cloud-v3:sha-9fac2457efccd03e9ac7b5005316a52572236208@sha256:3c9fb2ec5106325b4c5fb5f22a0980ef05359a2e6ae43861f3bfdb7698a04444"
+          image = "ghcr.io/ben-z/gate-controller/cloud-v3:sha-88c44e5a682e39f9d3ebfe37f797b0bb83dd76f5@sha256:97cd4aab0bf8d9610120bff55e3021478a530e2310bfa70c8a130313f9954c19"
           image_pull_policy = "Always"
 
           env {
