@@ -194,7 +194,7 @@ resource "vault_jwt_auth_backend_role" "github-actions-unicorns-infra-ro" {
   bound_claims = {
     "repository" = "unicorns/infra",
   }
-  bound_audiences = ["github-actions"]
+  bound_audiences = ["https://github.com/unicorns"]
   token_policies = [vault_policy.provisioner-ro.name]
   role_type = "jwt"
   token_ttl = 1 * pow(60, 2) # pow(60, 2) = 1 hour (in seconds)
