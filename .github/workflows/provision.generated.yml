@@ -64,7 +64,7 @@ jobs:
       id-token: write
     steps:
       - name: Set up Vault
-        uses: hashicorp/vault-action@d1720f055e0635fd932a1d2a48f87a666a57906c
+        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
         with:
           exportToken: true
           method: jwt
@@ -99,7 +99,7 @@ jobs:
       id-token: write
     steps:
       - name: Set up Vault
-        uses: hashicorp/vault-action@d1720f055e0635fd932a1d2a48f87a666a57906c
+        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
         with:
           exportToken: true
           method: jwt
@@ -134,7 +134,7 @@ jobs:
       id-token: write
     steps:
       - name: Set up Vault
-        uses: hashicorp/vault-action@d1720f055e0635fd932a1d2a48f87a666a57906c
+        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
         with:
           exportToken: true
           method: jwt
@@ -169,7 +169,7 @@ jobs:
       id-token: write
     steps:
       - name: Set up Vault
-        uses: hashicorp/vault-action@d1720f055e0635fd932a1d2a48f87a666a57906c
+        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
         with:
           exportToken: true
           method: jwt
@@ -204,7 +204,7 @@ jobs:
       id-token: write
     steps:
       - name: Set up Vault
-        uses: hashicorp/vault-action@d1720f055e0635fd932a1d2a48f87a666a57906c
+        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
         with:
           exportToken: true
           method: jwt
@@ -239,7 +239,7 @@ jobs:
       id-token: write
     steps:
       - name: Set up Vault
-        uses: hashicorp/vault-action@d1720f055e0635fd932a1d2a48f87a666a57906c
+        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
         with:
           exportToken: true
           method: jwt
