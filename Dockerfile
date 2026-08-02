@@ -32,7 +32,7 @@ RUN cd /opt \
     && git checkout 685aa0125e3ed40b57dd2d152526b2394c8be9e8 \
     && go install .
 
-FROM bitnami/kubectl:1.26.1 AS kubectl
+FROM registry.k8s.io/kubectl:v1.34.8 AS kubectl
 
 # This stage is used to keep the cache valid across different systems (even when the file permissions change).
 # Use this stage as a courier to copy files from the build context to the image.
@@ -100,7 +100,7 @@ RUN echo 'export PATH="${PATH}:/go/bin"' >> /etc/profile.d/go-path.sh
 ENV PATH="${PATH}:/go/bin"
 
 # Install kubectl
-COPY --from=kubectl /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/
+COPY --from=kubectl /bin/kubectl /usr/local/bin/
 
 # This tells /bin/sh to source an environment file on startup
 ENV ENV=/etc/profile
