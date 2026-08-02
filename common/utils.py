@@ -1,3 +1,4 @@
+import os
 from json import JSONDecoder
 
 
@@ -50,3 +51,12 @@ def extract_json_objects(text, decoder=JSONDecoder()):
             pos = match + index
         except ValueError:
             pos = match + 1
+
+
+def get_env_value(*names):
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return value
+
+    return None
