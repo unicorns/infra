@@ -186,7 +186,7 @@ function(provision_jobs = []) {
       make_provision_job({
         name: 'Update workflow',
         command: |||
-          docker compose run provisioner /bin/bash -c './common/workflow_utils.py --output-format raw generate-provision-workflow .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.generated.yml'
+          docker compose run provisioner /bin/bash -c 'set -o pipefail; ./common/workflow_utils.py --output-format=raw generate-provision-workflow .github/workflows/provision.jsonnet | yq --prettyPrint > /tmp/provision.generated.yml && mv /tmp/provision.generated.yml .github/workflows/provision.generated.yml'
         |||,
         create_pr_on_change: true,
       })
