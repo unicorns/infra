@@ -89,7 +89,17 @@ class AzureProvisionerTests(unittest.TestCase):
                 ),
                 mock.patch.object(azure_provision, "ENV_PATH", env_path),
             ):
-                with mock.patch.object(azure_provision.subprocess, "run") as run:
+                with (
+                    mock.patch.dict(
+                        os.environ,
+                        {
+                            "ARM_CLIENT_ID": "client",
+                            "ARM_TENANT_ID": "tenant",
+                        },
+                        clear=True,
+                    ),
+                    mock.patch.object(azure_provision.subprocess, "run") as run,
+                ):
                     azure_provision.write_stack_outputs(outputs)
 
                 run.assert_called_once_with(
@@ -100,7 +110,10 @@ class AzureProvisionerTests(unittest.TestCase):
                         str(kubeconfig_path),
                         "--login",
                         "spn",
-                        "--use-azurerm-env-vars",
+                        "--client-id",
+                        "client",
+                        "--tenant-id",
+                        "tenant",
                     ],
                     check=True,
                 )
@@ -119,7 +132,7 @@ class AzureProvisionerTests(unittest.TestCase):
                 [
                     "AKS_CLUSTER_NAME=cluster",
                     "INGRESS_EXTERNAL_IP=192.0.2.1",
-                    "KUBE_CONFIG_PATH=./outputs/unicorns-aks-kubeconfig",
+                    f"KUBE_CONFIG_PATH={kubeconfig_path.resolve()}",
                 ],
             )
 

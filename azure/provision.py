@@ -81,10 +81,15 @@ def require_output(outputs: dict, name: str):
 
 
 def write_stack_outputs(outputs: dict):
+    client_id = get_env_value("ARM_CLIENT_ID", "AZURE_CLIENT_ID")
+    tenant_id = get_env_value("ARM_TENANT_ID", "AZURE_TENANT_ID")
+    if not client_id or not tenant_id:
+        raise RuntimeError("Missing Azure client or tenant ID for AKS kubeconfig")
+
     values = {
         "AKS_CLUSTER_NAME": require_output(outputs, "aks_cluster_name"),
         "INGRESS_EXTERNAL_IP": require_output(outputs, "ingress_static_ip"),
-        "KUBE_CONFIG_PATH": "./outputs/unicorns-aks-kubeconfig",
+        "KUBE_CONFIG_PATH": str(KUBECONFIG_PATH.resolve()),
     }
     kubeconfig = require_output(outputs, "aks_kube_config")
 
@@ -98,7 +103,10 @@ def write_stack_outputs(outputs: dict):
             str(KUBECONFIG_PATH),
             "--login",
             "spn",
-            "--use-azurerm-env-vars",
+            "--client-id",
+            client_id,
+            "--tenant-id",
+            tenant_id,
         ],
         check=True,
     )
