@@ -46,30 +46,9 @@ def get_vars(tools: ProvisionerTools):
             kube_config_path,
             "Set KUBE_CONFIG_PATH, KUBECONFIG, or KUBE_CONFIG.",
         ),
-        "kubernetes_cluster_name": require_var(
-            "kubernetes_cluster_name",
-            get_env_value("AKS_CLUSTER_NAME"),
-            "Set AKS_CLUSTER_NAME or run the Azure provisioner first.",
-        ),
-        "key_vault_name": require_var(
-            "key_vault_name",
-            get_env_value("AZURE_KEY_VAULT_NAME", "KEY_VAULT_NAME"),
-            "Set AZURE_KEY_VAULT_NAME or run the Azure provisioner first.",
-        ),
-        "key_vault_tenant_id": require_var(
-            "key_vault_tenant_id",
-            get_env_value("AZURE_TENANT_ID", "KEY_VAULT_TENANT_ID"),
-            "Set AZURE_TENANT_ID or run the Azure provisioner first.",
-        ),
-        "key_vault_secret_provider_client_id": require_var(
-            "key_vault_secret_provider_client_id",
-            get_env_value("KEY_VAULT_SECRET_PROVIDER_CLIENT_ID"),
-            "Set KEY_VAULT_SECRET_PROVIDER_CLIENT_ID or run the Azure provisioner first.",
-        ),
         "ingress_external_ip": get_env_value(
             "INGRESS_EXTERNAL_IP",
             "AKS_INGRESS_EXTERNAL_IP",
-            "GATE_CONTROLLER_ORIGIN_IP",
         ),
     }
 

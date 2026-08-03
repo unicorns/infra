@@ -43,6 +43,13 @@ RUN python3 -m pip install -r /tmp/requirements.txt && rm /tmp/requirements.txt
 # Install kubectl
 COPY --from=kubectl /bin/kubectl /usr/local/bin/
 
+ARG KUBELOGIN_VERSION=0.2.19
+RUN wget --quiet "https://github.com/Azure/kubelogin/releases/download/v${KUBELOGIN_VERSION}/kubelogin-linux-amd64.zip" -O /tmp/kubelogin.zip \
+    && echo "ebaeff02aa899c5cae6a2b954b64fc02738185319df2570f7dc053451efa4b2f  /tmp/kubelogin.zip" | sha256sum -c - \
+    && unzip /tmp/kubelogin.zip -d /tmp/kubelogin \
+    && install -m 0755 /tmp/kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/kubelogin \
+    && rm -rf /tmp/kubelogin /tmp/kubelogin.zip
+
 # This tells /bin/sh to source an environment file on startup
 ENV ENV=/etc/profile
 

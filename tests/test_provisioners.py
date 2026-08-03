@@ -7,9 +7,8 @@ from unittest import mock
 
 from azure import provision as azure_provision
 from common.provisioner_utils import (
-    get_terraform_output,
     ProvisionerTools,
-    import_preprovision_module,
+    get_terraform_output,
     run_terragrunt,
 )
 
@@ -29,6 +28,7 @@ class AzureProvisionerTests(unittest.TestCase):
             "ARM_CLIENT_ID": "client",
             "ARM_TENANT_ID": "tenant",
             "ARM_CLIENT_SECRET": "secret",
+            "AZURE_AKS_ADMIN_GROUP_OBJECT_IDS": "aks-first, aks-second",
             "AZURE_KEY_VAULT_ADMIN_OBJECT_IDS": "first, second",
         }
 
@@ -40,9 +40,26 @@ class AzureProvisionerTests(unittest.TestCase):
                     "app_client_id": "client",
                     "app_tenant_id": "tenant",
                     "app_client_secret": "secret",
+                    "aks_admin_group_object_ids": ["aks-first", "aks-second"],
                     "key_vault_admin_object_ids": ["first", "second"],
                 },
             )
+
+    def test_rejects_empty_admin_group_list(self):
+        environment = {
+            "ARM_SUBSCRIPTION_ID": "subscription",
+            "ARM_CLIENT_ID": "client",
+            "ARM_TENANT_ID": "tenant",
+            "ARM_CLIENT_SECRET": "secret",
+            "AZURE_AKS_ADMIN_GROUP_OBJECT_IDS": " , ",
+        }
+
+        with mock.patch.dict(os.environ, environment, clear=True):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "AZURE_AKS_ADMIN_GROUP_OBJECT_IDS",
+            ):
+                azure_provision.get_tf_vars()
 
     def test_writes_downstream_outputs(self):
         outputs = {
@@ -71,7 +88,21 @@ class AzureProvisionerTests(unittest.TestCase):
                 ),
                 mock.patch.object(azure_provision, "ENV_PATH", env_path),
             ):
-                azure_provision.write_stack_outputs(outputs)
+                with mock.patch.object(azure_provision.subprocess, "run") as run:
+                    azure_provision.write_stack_outputs(outputs)
+
+                run.assert_called_once_with(
+                    [
+                        "kubelogin",
+                        "convert-kubeconfig",
+                        "--kubeconfig",
+                        str(kubeconfig_path),
+                        "--login",
+                        "spn",
+                        "--use-azurerm-env-vars",
+                    ],
+                    check=True,
+                )
 
             self.assertEqual(kubeconfig_path.read_text(), "kubeconfig")
             self.assertEqual(
@@ -86,11 +117,7 @@ class AzureProvisionerTests(unittest.TestCase):
                 env_path.read_text().splitlines(),
                 [
                     "AKS_CLUSTER_NAME=cluster",
-                    "AZURE_KEY_VAULT_NAME=key-vault",
-                    "KEY_VAULT_TENANT_ID=tenant",
-                    "KEY_VAULT_SECRET_PROVIDER_CLIENT_ID=identity",
                     "INGRESS_EXTERNAL_IP=192.0.2.1",
-                    "GATE_CONTROLLER_ORIGIN_IP=192.0.2.1",
                     "KUBE_CONFIG_PATH=./outputs/unicorns-aks-kubeconfig",
                 ],
             )
@@ -113,19 +140,6 @@ class KubernetesProvisionerTests(unittest.TestCase):
                 ["-lockfile=readonly"],
             ),
         )
-
-    def test_gate_image_is_required(self):
-        module = import_preprovision_module(
-            Path("kubernetes-shared/provision.py"),
-            "gate-controller-cloud-v3",
-        )
-
-        with mock.patch.dict(os.environ, {}, clear=True):
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "GATE_CONTROLLER_CLOUD_V3_IMAGE",
-            ):
-                module.get_vars(None, "gate-controller-cloud-v3")
 
 
 class TerraformOutputTests(unittest.TestCase):

@@ -40,12 +40,19 @@ resource "azurerm_kubernetes_cluster" "shared" {
     secret_rotation_enabled = true
   }
 
+  azure_active_directory_role_based_access_control {
+    admin_group_object_ids = var.aks_admin_group_object_ids
+    azure_rbac_enabled     = false
+    tenant_id              = data.azurerm_client_config.current.tenant_id
+  }
+
   auto_scaler_profile {
     skip_nodes_with_local_storage = false
     skip_nodes_with_system_pods   = false
   }
 
   node_os_upgrade_channel           = "NodeImage"
+  local_account_disabled            = true
   oidc_issuer_enabled               = true
   role_based_access_control_enabled = true
   workload_identity_enabled         = true

@@ -1,5 +1,16 @@
 # Shared AKS Stack
 
+## Ownership boundary
+
+This repository owns the shared platform: AKS, node pools, ingress-nginx,
+monitoring, the Secrets Store CSI add-on, the shared Key Vault, and the static
+ingress IP. Application repositories own their namespace-level workloads and
+CI/CD pipelines.
+
+Application access uses Microsoft Entra authentication and namespace-scoped
+Kubernetes RBAC. Local AKS accounts are disabled. Never give an application
+pipeline the cluster administrator kubeconfig.
+
 ## Cost guardrails
 
 The stack limits its fixed Azure footprint to:
@@ -10,9 +21,8 @@ The stack limits its fixed Azure footprint to:
   `0.02 USD/hour` maximum price
 - one `32 GB` managed OS disk per active node
 - Log Analytics capped at `0.25 GB/day`
-- one `1 GiB` gate-controller data volume
 
-The shared ingress and cluster should be reused for additional applications.
+The shared ingress and cluster should be reused for applications.
 Application-specific databases, disks, traffic, and log volume add to this
 baseline.
 
@@ -26,9 +36,18 @@ baseline.
    export ARM_CLIENT_ID="..."
    export ARM_TENANT_ID="..."
    export ARM_CLIENT_SECRET="..."
-   export AZURE_KEY_VAULT_ADMIN_OBJECT_IDS="$(az ad signed-in-user show --query id -o tsv)"
-   export CLOUDFLARE_API_TOKEN="..."
-   export GATE_CONTROLLER_CLOUD_V3_IMAGE="ghcr.io/ben-z/gate-controller/cloud-v3:sha-..."
+   export AZURE_KEY_VAULT_ADMIN_OBJECT_IDS="..."
+   export AZURE_AKS_ADMIN_GROUP_OBJECT_IDS="..."
+   ```
+
+   Before the first Entra-enabled apply, create the AKS administrator group,
+   bind the infrastructure service principal directly to Kubernetes
+   `cluster-admin`, and set the GitHub Actions variable:
+
+   ```sh
+   ./azure/bootstrap-aks-entra.sh
+   export AZURE_AKS_ADMIN_GROUP_OBJECT_IDS="$(az ad group show \
+     --group unicorns-aks-admins --query id -o tsv)"
    ```
 
 2. Build the provisioner.
@@ -44,53 +63,30 @@ baseline.
    cat outputs/azure.env >> .env
    ```
 
-   The Azure provisioner writes the AKS kubeconfig to
-   `outputs/unicorns-aks-kubeconfig` and writes non-secret downstream values to
-   `outputs/azure.env`.
+   The Azure provisioner writes an ignored AKS kubeconfig configured for
+   non-interactive service-principal authentication. The provisioner image
+   includes `kubelogin`; credentials remain in the `ARM_*` environment and are
+   not embedded in the kubeconfig.
 
-4. Set the gate-controller secrets.
-
-   ```sh
-   az keyvault secret set \
-     --vault-name unicornsftw-kv \
-     --name gate-controller-cloud-v3-initial-admin-credentials \
-     --value '{"username":"admin","password":"replace-this"}'
-
-   az keyvault secret set \
-     --vault-name unicornsftw-kv \
-     --name gate-controller-cloud-v3-agent-token \
-     --value 'replace-this'
-
-   az keyvault secret set \
-     --vault-name unicornsftw-kv \
-     --name gate-controller-cloud-v3-openai-api-key \
-     --value 'replace-this'
-   ```
-
-5. Provision DNS and Kubernetes.
+4. Provision shared Kubernetes services.
 
    ```sh
-   docker compose run --rm provisioner ./cloudflare/provision.py all
    docker compose run --rm provisioner ./kubernetes-shared/provision.py all
    ```
 
 Set `DRY_RUN=1` before these commands to plan without applying changes. GitHub
-Actions performs the same sequence and passes Azure's generated values directly
-to the dependent provisioners.
+Actions performs the same sequence.
 
-## Operations
+## Application onboarding
 
-Terraform manages the Key Vault, its AKS access policy, and the Kubernetes
-`SecretProviderClass`; secret values are not stored in Terraform state.
+Each application needs a one-time platform registration:
 
-The gate controller reads mounted secrets at process startup. Restart the
-deployment after rotating a secret:
+- a namespace;
+- a Microsoft Entra deployment identity federated to its protected GitHub
+  environment;
+- the AKS Cluster User role so it can retrieve a user kubeconfig; and
+- a Kubernetes RoleBinding that grants only the resources required in that
+  namespace.
 
-```sh
-kubectl --kubeconfig ./outputs/unicorns-aks-kubeconfig \
-  -n gate-controller-cloud-v3 \
-  rollout restart deployment/gate-controller-cloud-v3
-```
-
-The gate controller uses one `ReadWriteOnce` volume and a `Recreate` deployment
-strategy so SQLite has a single writer.
+Applications should use a dedicated Key Vault and AKS workload identity for
+runtime secrets. Secret values must not pass through GitHub Actions.

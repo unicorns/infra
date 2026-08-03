@@ -54,6 +54,16 @@ variable "aks_system_vm_size" {
   default = "Standard_B2s"
 }
 
+variable "aks_admin_group_object_ids" {
+  type        = set(string)
+  description = "Microsoft Entra group object IDs that administer the AKS cluster"
+
+  validation {
+    condition     = length(var.aks_admin_group_object_ids) > 0
+    error_message = "At least one AKS administrator group object ID is required."
+  }
+}
+
 variable "enable_spot_node_pool" {
   type    = bool
   default = true

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import subprocess
 from pathlib import Path
 
 from common.cli_utils import get_app
@@ -25,6 +26,8 @@ ENV_TF_VARS = {
     "app_client_secret": ("ARM_CLIENT_SECRET", "AZURE_CLIENT_SECRET"),
 }
 
+AKS_ADMIN_GROUP_ENV = "AZURE_AKS_ADMIN_GROUP_OBJECT_IDS"
+
 
 def get_tf_vars():
     variables = {
@@ -39,6 +42,22 @@ def get_tf_vars():
         raise RuntimeError(
             "Missing required Azure credentials: " + ", ".join(required)
         )
+
+    admin_ids = get_env_value(AKS_ADMIN_GROUP_ENV)
+    if not admin_ids:
+        raise RuntimeError(f"Missing required AKS administrator groups: {AKS_ADMIN_GROUP_ENV}")
+
+    admin_group_ids = [
+        object_id.strip()
+        for object_id in admin_ids.split(",")
+        if object_id.strip()
+    ]
+    if not admin_group_ids:
+        raise RuntimeError(
+            f"Missing required AKS administrator groups: {AKS_ADMIN_GROUP_ENV}"
+        )
+
+    variables["aks_admin_group_object_ids"] = admin_group_ids
 
     if admin_ids := get_env_value(
         "AZURE_KEY_VAULT_ADMIN_OBJECT_IDS",
@@ -64,23 +83,25 @@ def require_output(outputs: dict, name: str):
 def write_stack_outputs(outputs: dict):
     values = {
         "AKS_CLUSTER_NAME": require_output(outputs, "aks_cluster_name"),
-        "AZURE_KEY_VAULT_NAME": require_output(outputs, "key_vault_name"),
-        "KEY_VAULT_TENANT_ID": require_output(outputs, "key_vault_tenant_id"),
-        "KEY_VAULT_SECRET_PROVIDER_CLIENT_ID": require_output(
-            outputs,
-            "aks_key_vault_secret_provider_client_id",
-        ),
         "INGRESS_EXTERNAL_IP": require_output(outputs, "ingress_static_ip"),
-        "GATE_CONTROLLER_ORIGIN_IP": require_output(
-            outputs,
-            "ingress_static_ip",
-        ),
         "KUBE_CONFIG_PATH": "./outputs/unicorns-aks-kubeconfig",
     }
     kubeconfig = require_output(outputs, "aks_kube_config")
 
     OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
     KUBECONFIG_PATH.write_text(kubeconfig)
+    subprocess.run(
+        [
+            "kubelogin",
+            "convert-kubeconfig",
+            "--kubeconfig",
+            str(KUBECONFIG_PATH),
+            "--login",
+            "spn",
+            "--use-azurerm-env-vars",
+        ],
+        check=True,
+    )
     output_owner = OUTPUTS_DIR.stat()
     os.chown(KUBECONFIG_PATH, output_owner.st_uid, output_owner.st_gid)
     KUBECONFIG_PATH.chmod(0o600)
