@@ -25,11 +25,17 @@ blocks adopt the pre-existing live resources during the first Terraform apply.
 
 ## Bootstrap access
 
-The infrastructure service principal needs the `Billing profile contributor`
-role on the billing profile. Subscription Contributor alone is insufficient
-because the budgets and weekly report are billing-profile resources. This role
-is a one-time bootstrap prerequisite and is intentionally not self-managed by
-Terraform; it cannot grant or revoke billing access.
+The infrastructure service principal needs both:
+
+- `Billing profile contributor` on the billing profile, for the budgets and
+  weekly report.
+- `Cost Management Contributor` (or a broader existing role) on every
+  subscription in `billing_subscriptions`, for the daily anomaly rules.
+
+The primary subscription already grants the service principal `Contributor`;
+the secondary subscription grants the narrower `Cost Management Contributor`.
+These are one-time bootstrap prerequisites and are intentionally not
+self-managed by Terraform. Neither role can grant or revoke billing access.
 
 ## Grant renewal
 
