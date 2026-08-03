@@ -6,7 +6,11 @@ from pathlib import Path
 from unittest import mock
 
 from azure import provision as azure_provision
-from common.provisioner_utils import import_preprovision_module
+from common.provisioner_utils import (
+    ProvisionerTools,
+    import_preprovision_module,
+    run_terragrunt,
+)
 
 
 class AzureProvisionerTests(unittest.TestCase):
@@ -88,6 +92,23 @@ class AzureProvisionerTests(unittest.TestCase):
 
 
 class KubernetesProvisionerTests(unittest.TestCase):
+    @mock.patch("common.provisioner_utils.run_terragrunt_generic_with_project")
+    def test_terragrunt_init_keeps_lock_files_read_only(self, run_command):
+        tools = ProvisionerTools(env=mock.sentinel.environment)
+
+        with mock.patch.dict(os.environ, {"DRY_RUN": "1"}, clear=True):
+            run_terragrunt(tools, "system")
+
+        self.assertEqual(
+            run_command.call_args_list[0].args,
+            (
+                mock.sentinel.environment,
+                "system",
+                "init",
+                ["-lockfile=readonly"],
+            ),
+        )
+
     def test_gate_image_is_required(self):
         module = import_preprovision_module(
             Path("kubernetes-shared/provision.py"),

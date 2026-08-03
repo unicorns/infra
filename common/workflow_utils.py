@@ -16,6 +16,7 @@ PROVISION_JOBS = [
                 "cat outputs/azure.env >> .env",
                 "docker compose run --rm provisioner ./cloudflare/provision.py all",
                 "docker compose run --rm provisioner ./kubernetes-shared/provision.py all",
+                "git diff --exit-code",
             ]
         ),
         "env": {

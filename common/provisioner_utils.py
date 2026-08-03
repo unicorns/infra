@@ -204,7 +204,7 @@ def run_terragrunt(
         tools.env,
         project,
         "init",
-        additional_init_args,
+        ["-lockfile=readonly", *(additional_init_args or [])],
     )
 
     if os.environ.get("DRY_RUN"):

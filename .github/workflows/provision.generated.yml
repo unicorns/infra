@@ -88,6 +88,7 @@ jobs:
           cat outputs/azure.env >> .env
           docker compose run --rm provisioner ./cloudflare/provision.py all
           docker compose run --rm provisioner ./kubernetes-shared/provision.py all
+          git diff --exit-code
   all-good:
     needs:
       - provision-infrastructure

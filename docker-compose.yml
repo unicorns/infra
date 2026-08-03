@@ -14,6 +14,10 @@ services:
       # The .github/workflows directory is mounted as rw so that the provisioner
       # can generate workflows.
       - ./.github/workflows:/${COMPOSE_PROJECT_NAME:?}/.github/workflows:rw
+      # Terragrunt copies provider locks from its cache after initialization.
+      - ./kubernetes-shared/gate-controller-cloud-v3/.terraform.lock.hcl:/${COMPOSE_PROJECT_NAME:?}/kubernetes-shared/gate-controller-cloud-v3/.terraform.lock.hcl:rw
+      - ./kubernetes-shared/kube-state-metrics/.terraform.lock.hcl:/${COMPOSE_PROJECT_NAME:?}/kubernetes-shared/kube-state-metrics/.terraform.lock.hcl:rw
+      - ./kubernetes-shared/system/.terraform.lock.hcl:/${COMPOSE_PROJECT_NAME:?}/kubernetes-shared/system/.terraform.lock.hcl:rw
     tmpfs:
       - /run:exec
       - /tmp:exec
