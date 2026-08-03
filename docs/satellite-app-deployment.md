@@ -6,9 +6,10 @@ repository. Use
 [`ben-z/gate-controller`](https://github.com/ben-z/gate-controller/tree/master/deploy)
 as the working reference.
 
-## 1. Register the application once
+## 1. Register the application in `unicorns/infra`
 
-A platform operator creates:
+A platform operator adds declarative registration under `applications/<app>`
+for:
 
 - a dedicated Kubernetes namespace;
 - a deployment managed identity federated to
@@ -36,33 +37,24 @@ The application workflow itself receives only `contents: read` and
 `packages: write`. Azure login uses OIDC; do not create an Azure client secret.
 
 For a private image, the platform operator must also grant the namespace
-read-only registry access, such as an out-of-band `imagePullSecret`. Do not grant
-the deployment workflow permission to write Kubernetes Secrets. Public GHCR
-images need no pull credential.
+read-only registry access using an out-of-band `imagePullSecret`. Terraform must
+not import that Secret because doing so persists the registry credential in
+state. Do not grant the deployment workflow permission to write Kubernetes
+Secrets. Public GHCR images need no pull credential.
 
-Adapt the reference app's `deploy/bootstrap/` directory, update its repository,
-namespace, hostname, and secret names, then run it once:
-
-```sh
-az bicep install
-./deploy/bootstrap/bootstrap.sh
-```
-
-Populate the dedicated Key Vault out of band before the first deployment. The
-bootstrap should set only non-secret GitHub environment variables. Remove the
-reference bootstrap's source-vault migration block for a new application; it
-exists only to hand off the gate controller's legacy secrets.
+Populate the dedicated Key Vault out of band before the first deployment.
+Application repositories must not contain an infrastructure bootstrap script.
 
 ## 2. Add the deployment contract to the app repository
 
-- Copy and adapt the reference deploy workflow, bootstrap, namespace manifests,
-  and deploy script. Change all app names, image paths, hostnames, resource
-  requirements, and secret declarations.
+- Copy and adapt the reference deploy workflow, runtime manifests, and deploy
+  script. Change all app names, image paths, hostnames, resource requirements,
+  and secret declarations.
 - Build an immutable image for the source commit and deploy its digest, not a
   mutable tag.
 - Embed the full commit SHA in the image and expose it from an uncached version
   endpoint such as `GET /api/version` returning `{"version":"<sha>"}`.
-- Keep the namespace manifests and deploy script in the app repository. Apply
+- Keep the runtime manifests and deploy script in the app repository. Apply
   them with the namespace-scoped identity, wait for rollout, verify the exact
   image digest, then require the version endpoint to equal the source SHA.
 - Mount runtime secrets from Key Vault through the workload identity; never
@@ -72,6 +64,9 @@ exists only to hand off the gate controller's legacy secrets.
   rollback.
 - Use the restricted Pod Security settings: non-root user, RuntimeDefault
   seccomp, no privilege escalation, and all Linux capabilities dropped.
+- Target the spot application pool with both its taint toleration and required
+  `kubernetes.azure.com/scalesetpriority=spot` node affinity. Publish an
+  `linux/arm64` or multi-architecture image for the current spot pool.
 
 Required non-secret `production` environment variables normally include the
 Azure tenant, subscription, resource group, cluster, deployment identity client

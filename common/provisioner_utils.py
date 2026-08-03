@@ -99,11 +99,16 @@ def run_terraform_init(env: ProvisionerEnvironment, additional_args=None):
     )
 
 
-def run_terraform_plan(env: ProvisionerEnvironment, additional_args=None):
+def run_terraform_plan(
+    env: ProvisionerEnvironment,
+    additional_args=None,
+    refresh: bool = False,
+):
     return run_terraform_generic_with_var_files(
         env,
         "plan",
-        ["-lock-timeout=20m", "-refresh=false"] + (additional_args or []),
+        ["-lock-timeout=20m", f"-refresh={str(refresh).lower()}"]
+        + (additional_args or []),
     )
 
 
@@ -151,12 +156,17 @@ def run_terraform(
     additional_init_args=None,
     additional_plan_args=None,
     additional_apply_args=None,
+    refresh_plan: bool = False,
 ):
     write_terraform_vars(tools.env, variables)
     run_terraform_init(tools.env, additional_init_args)
 
     if os.environ.get("DRY_RUN"):
-        run_terraform_plan(tools.env, additional_plan_args)
+        run_terraform_plan(
+            tools.env,
+            additional_plan_args,
+            refresh=refresh_plan,
+        )
         return
 
     approval_args = ["-auto-approve"] if os.environ.get("NO_CONFIRM") else []

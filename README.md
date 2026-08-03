@@ -4,10 +4,11 @@ This repository provisions the shared platform used by applications:
 
 - `azure`: AKS, Azure Key Vault, a static ingress IP, and capped Azure Monitor logs
 - `kubernetes-shared`: ingress-nginx, kube-state-metrics, and reloader
+- `applications`: shared-cluster registration, deployment trust, and DNS;
+  never application workloads or runtime secret values
 
 Terraform Cloud stores state. Application workloads, runtime configuration, and
-release pipelines belong in their application repositories. This repository may
-include examples, but it does not deploy personal applications.
+release pipelines belong in their application repositories.
 
 See [docs/aks-shared-stack.md](docs/aks-shared-stack.md) for provisioning and
 operations. See
@@ -24,8 +25,9 @@ docker compose run --rm provisioner /bin/bash
 ```
 
 Provisioning requires `TF_TOKEN_app_terraform_io`, the four standard `ARM_*`
-service-principal variables, `AZURE_KEY_VAULT_ADMIN_OBJECT_IDS`, and
-`AZURE_AKS_ADMIN_GROUP_OBJECT_IDS`.
+service-principal variables, `AZURE_KEY_VAULT_ADMIN_OBJECT_IDS`,
+`AZURE_AKS_ADMIN_GROUP_OBJECT_IDS`, and any application-registration credentials
+documented under `applications/`.
 
 The Azure stack also declaratively owns application-state workspaces in HCP
 Terraform. The provisioner passes `TF_TOKEN_app_terraform_io` as a sensitive,

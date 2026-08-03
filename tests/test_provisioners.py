@@ -2,13 +2,16 @@ import os
 import stat
 import tempfile
 import unittest
+from io import BytesIO
 from pathlib import Path
 from unittest import mock
 
+from applications.pigeon import provision as pigeon_provision
 from azure import provision as azure_provision
 from common.provisioner_utils import (
     ProvisionerTools,
     get_terraform_output,
+    run_terraform_plan,
     run_terragrunt,
 )
 
@@ -158,7 +161,120 @@ class KubernetesProvisionerTests(unittest.TestCase):
         )
 
 
+class PigeonProvisionerTests(unittest.TestCase):
+    def test_requires_registration_credentials(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "PIGEON_GITHUB_ADMIN_TOKEN",
+            ):
+                pigeon_provision.get_tf_vars()
+
+    def test_reads_registration_configuration(self):
+        with tempfile.NamedTemporaryFile() as kubeconfig:
+            environment = {
+                "ARM_SUBSCRIPTION_ID": "subscription",
+                "ARM_CLIENT_ID": "client",
+                "ARM_TENANT_ID": "tenant",
+                "ARM_CLIENT_SECRET": "secret",
+                "KUBE_CONFIG_PATH": kubeconfig.name,
+                "PIGEON_GITHUB_ADMIN_TOKEN": "github-token",
+                "CLOUDFLARE_API_TOKEN": "cloudflare-token",
+                "AZURE_KEY_VAULT_ADMIN_OBJECT_IDS": "admin",
+            }
+
+            with mock.patch.dict(os.environ, environment, clear=True):
+                self.assertEqual(
+                    pigeon_provision.get_tf_vars(),
+                    {
+                        "subscription_id": "subscription",
+                        "app_client_id": "client",
+                        "app_tenant_id": "tenant",
+                        "app_client_secret": "secret",
+                        "kube_config_path": str(Path(kubeconfig.name).resolve()),
+                        "github_token": "github-token",
+                        "cloudflare_api_token": "cloudflare-token",
+                        "key_vault_admin_object_id": "admin",
+                    },
+                )
+
+    def test_requires_exactly_one_key_vault_admin(self):
+        with tempfile.NamedTemporaryFile() as kubeconfig:
+            environment = {
+                "ARM_SUBSCRIPTION_ID": "subscription",
+                "ARM_CLIENT_ID": "client",
+                "ARM_TENANT_ID": "tenant",
+                "ARM_CLIENT_SECRET": "secret",
+                "KUBE_CONFIG_PATH": kubeconfig.name,
+                "PIGEON_GITHUB_ADMIN_TOKEN": "github-token",
+                "CLOUDFLARE_API_TOKEN": "cloudflare-token",
+                "AZURE_KEY_VAULT_ADMIN_OBJECT_IDS": "first, second",
+            }
+
+            with mock.patch.dict(os.environ, environment, clear=True):
+                with self.assertRaisesRegex(RuntimeError, "exactly one"):
+                    pigeon_provision.get_tf_vars()
+
+    def test_requires_local_terraform_workspace(self):
+        response = BytesIO(
+            b'{"data":{"attributes":{"execution-mode":"local"}}}'
+        )
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"TF_TOKEN_app_terraform_io": "terraform-token"},
+                clear=True,
+            ),
+            mock.patch.object(
+                pigeon_provision,
+                "urlopen",
+                return_value=response,
+            ) as urlopen,
+        ):
+            pigeon_provision.require_local_terraform_workspace()
+
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, pigeon_provision.TERRAFORM_WORKSPACE_URL)
+        self.assertEqual(
+            request.get_header("Authorization"),
+            "Bearer terraform-token",
+        )
+
+    def test_rejects_remote_terraform_workspace(self):
+        response = BytesIO(
+            b'{"data":{"attributes":{"execution-mode":"remote"}}}'
+        )
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"TF_TOKEN_app_terraform_io": "terraform-token"},
+                clear=True,
+            ),
+            mock.patch.object(
+                pigeon_provision,
+                "urlopen",
+                return_value=response,
+            ),
+            self.assertRaisesRegex(RuntimeError, "local execution"),
+        ):
+            pigeon_provision.require_local_terraform_workspace()
+
+
 class TerraformOutputTests(unittest.TestCase):
+    @mock.patch("common.provisioner_utils.run_terraform_generic_with_var_files")
+    def test_plan_can_refresh_live_state(self, run_command):
+        run_terraform_plan(
+            mock.sentinel.environment,
+            ["-detailed-exitcode"],
+            refresh=True,
+        )
+
+        run_command.assert_called_once_with(
+            mock.sentinel.environment,
+            "plan",
+            ["-lock-timeout=20m", "-refresh=true", "-detailed-exitcode"],
+        )
+
     @mock.patch("common.provisioner_utils.run_terraform_generic")
     def test_accepts_one_json_object_after_diagnostics(self, run_command):
         run_command.return_value.stdout = 'diagnostic\n{"value": 1}\n'
