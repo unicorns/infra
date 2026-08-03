@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest import mock
 
 from azure import provision as azure_provision
-from cloudflare import provision as cloudflare_provision
 from common.provisioner_utils import (
     ProvisionerTools,
     get_terraform_output,
@@ -154,24 +153,6 @@ class KubernetesProvisionerTests(unittest.TestCase):
                 ["-lockfile=readonly"],
             ),
         )
-
-
-class CloudflareProvisionerTests(unittest.TestCase):
-    def test_requires_token_for_state_handoff(self):
-        with mock.patch.dict(os.environ, {}, clear=True):
-            with self.assertRaisesRegex(RuntimeError, "CLOUDFLARE_API_TOKEN"):
-                cloudflare_provision.get_tf_vars()
-
-    def test_reads_token_for_state_handoff(self):
-        with mock.patch.dict(
-            os.environ,
-            {"CLOUDFLARE_API_TOKEN": "token"},
-            clear=True,
-        ):
-            self.assertEqual(
-                cloudflare_provision.get_tf_vars(),
-                {"cloudflare_api_token": "token"},
-            )
 
 
 class TerraformOutputTests(unittest.TestCase):

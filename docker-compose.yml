@@ -15,7 +15,6 @@ services:
       # can generate workflows.
       - ./.github/workflows:/${COMPOSE_PROJECT_NAME:?}/.github/workflows:rw
       # Terragrunt copies provider locks from its cache after initialization.
-      - ./kubernetes-shared/gate-controller-cloud-v3/.terraform.lock.hcl:/${COMPOSE_PROJECT_NAME:?}/kubernetes-shared/gate-controller-cloud-v3/.terraform.lock.hcl:rw
       - ./kubernetes-shared/kube-state-metrics/.terraform.lock.hcl:/${COMPOSE_PROJECT_NAME:?}/kubernetes-shared/kube-state-metrics/.terraform.lock.hcl:rw
       - ./kubernetes-shared/system/.terraform.lock.hcl:/${COMPOSE_PROJECT_NAME:?}/kubernetes-shared/system/.terraform.lock.hcl:rw
     tmpfs:
@@ -42,7 +41,6 @@ services:
       AZURE_KEY_VAULT_ADMIN_OBJECT_IDS: ${AZURE_KEY_VAULT_ADMIN_OBJECT_IDS:-}
       KEY_VAULT_ADMIN_OBJECT_IDS: ${KEY_VAULT_ADMIN_OBJECT_IDS:-}
       AZURE_AKS_ADMIN_GROUP_OBJECT_IDS: ${AZURE_AKS_ADMIN_GROUP_OBJECT_IDS:-}
-      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
       AKS_CLUSTER_NAME: ${AKS_CLUSTER_NAME:-}
       KUBE_CONFIG: ${KUBE_CONFIG:-}
       KUBE_CONFIG_PATH: ${KUBE_CONFIG_PATH:-}
