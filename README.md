@@ -9,8 +9,11 @@ git fetch \
 ## Architecture
 
 This repository contains various provisioners. The provisioners depend on the following services:
-- [Vault](https://vaultproject.io): For secrets management. This is self-hosted on Azure Kubernetes.
+- [Azure Key Vault](https://azure.microsoft.com/products/key-vault): For runtime application secrets.
 - [Terraform Cloud](https://app.terraform.io): For state management. This is managed by HashiCorp.
+
+The current low-cost app hosting target is a single shared AKS cluster, Azure Key
+Vault, and capped Azure Monitor logs. See [docs/aks-shared-stack.md](docs/aks-shared-stack.md).
 
 ## Provisioner environment variables
 
@@ -24,7 +27,34 @@ Users can be created by an administrator by adding a record into the `users` kv2
 
 ## Secrets
 
-We host a [HashiCorp Vault](https://www.vaultproject.io/) server on Azure Kubernetes.
+Runtime application secrets live in Azure Key Vault. The shared AKS stack uses
+the Azure Key Vault Secrets Store CSI add-on so pods can read secrets without
+putting secret values in Terraform state.
+
+To set the gate-controller secrets:
+
+```sh
+az keyvault secret set \
+  --vault-name unicornsftw-kv \
+  --name gate-controller-cloud-v3-initial-admin-credentials \
+  --value '{"username":"admin","password":"replace-this"}'
+
+az keyvault secret set \
+  --vault-name unicornsftw-kv \
+  --name gate-controller-cloud-v3-agent-token \
+  --value 'replace-this'
+
+az keyvault secret set \
+  --vault-name unicornsftw-kv \
+  --name gate-controller-cloud-v3-openai-api-key \
+  --value 'replace-this'
+```
+
+## Legacy Vault
+
+The old stack hosted [HashiCorp Vault](https://www.vaultproject.io/) on AKS.
+Those utilities remain for migration and state recovery, but new runtime app
+secrets should use Azure Key Vault.
 
 To put a secret into Vault:
 

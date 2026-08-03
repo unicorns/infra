@@ -103,6 +103,7 @@ local make_provision_job(spec) =
     'command',
     'dependencies',
     'create_pr_on_change',
+    'env',
     'requires_vault',
   ]));
   assert std.length(invalid_keys) == 0 : 'Invalid keys in provision job spec: ' + std.toString(invalid_keys);
@@ -111,6 +112,7 @@ local make_provision_job(spec) =
   local provisioner_command = spec.command;
   local dependencies = std.set(std.get(spec, 'dependencies', []));
   local create_pr_on_change = std.get(spec, 'create_pr_on_change', false);
+  local env = std.get(spec, 'env', {});
   local requires_vault = std.get(spec, 'requires_vault', false);
 
   local perms = merge_perms(
@@ -126,6 +128,7 @@ local make_provision_job(spec) =
     [utils.slugify(name)]: {
       needs: std.map(utils.slugify, dependencies),
       'runs-on': 'ubuntu-latest',
+      [if env == {} then null else 'env']: env,
       [if perms == {} then null else 'permissions']: perms,
       steps: vault_setup + common_init_steps(
         // This is required because normal GITHUB_TOKEN does not have workflow permissions
