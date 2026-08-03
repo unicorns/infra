@@ -34,7 +34,7 @@ jobs:
           fi
       - name: Update workflow
         run: |
-          docker compose run provisioner /bin/bash -c './common/workflow_utils.py --output-format raw generate-provision-workflow .github/workflows/provision.jsonnet | yq --prettyPrint > .github/workflows/provision.generated.yml'
+          docker compose run provisioner /bin/bash -c 'set -o pipefail; ./common/workflow_utils.py generate-provision-workflow .github/workflows/provision.jsonnet | yq --prettyPrint > /tmp/provision.generated.yml && mv /tmp/provision.generated.yml .github/workflows/provision.generated.yml'
       - name: Create PR if there are changes
         id: create_pr
         uses: peter-evans/create-pull-request@6d6857d36972b65feb161a90e484f2984215f83e
@@ -124,6 +124,7 @@ jobs:
       AZURE_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
       KEY_VAULT_SECRET_PROVIDER_CLIENT_ID: ${{ vars.KEY_VAULT_SECRET_PROVIDER_CLIENT_ID }}
       INGRESS_EXTERNAL_IP: ${{ vars.INGRESS_EXTERNAL_IP }}
+      GATE_CONTROLLER_CLOUD_V3_IMAGE: ${{ vars.GATE_CONTROLLER_CLOUD_V3_IMAGE }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b

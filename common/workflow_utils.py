@@ -5,7 +5,7 @@ from pathlib import Path
 import rjsonnet
 import json
 
-from common.cli_utils import get_app
+from common.cli_utils import TyperOutputFormat, get_app
 
 PROVISIONERS = {
     "azure": {
@@ -36,11 +36,12 @@ PROVISIONERS = {
             "AZURE_TENANT_ID": "${{ secrets.ARM_TENANT_ID }}",
             "KEY_VAULT_SECRET_PROVIDER_CLIENT_ID": "${{ vars.KEY_VAULT_SECRET_PROVIDER_CLIENT_ID }}",
             "INGRESS_EXTERNAL_IP": "${{ vars.INGRESS_EXTERNAL_IP }}",
+            "GATE_CONTROLLER_CLOUD_V3_IMAGE": "${{ vars.GATE_CONTROLLER_CLOUD_V3_IMAGE }}",
         },
     },
 }
 
-app = get_app()
+app = get_app(default_output_format=TyperOutputFormat.raw)
 
 @app.command()
 def generate_provision_workflow(jsonnet_file: str):
