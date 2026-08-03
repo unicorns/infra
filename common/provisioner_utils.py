@@ -29,7 +29,12 @@ ProvisionerTools = namedtuple('ProvisionerTools', [
     'vault_client',
 ])
 
-def init_environment(script_path: Path, use_terraform: bool = False, use_terragrunt: bool = False):
+def init_environment(
+    script_path: Path,
+    use_terraform: bool = False,
+    use_terragrunt: bool = False,
+    use_vault: bool = True,
+):
     proj_name = script_path.parent.name
 
     env = ProvisionerEnvironment(
@@ -46,14 +51,18 @@ def init_environment(script_path: Path, use_terraform: bool = False, use_terragr
     for key, value in env._asdict().items():
         os.environ[key] = str(value)
     
-    vault_client = None
+    uses_iac = use_terraform or use_terragrunt
+    vault_client = get_vault_client() if uses_iac and use_vault else None
 
-    if (use_terraform or use_terragrunt) and not os.environ.get("TF_TOKEN_app_terraform_io"):
-        vault_client = vault_client or get_vault_client()
+    if uses_iac and not os.environ.get("TF_TOKEN_app_terraform_io"):
+        if not vault_client:
+            raise RuntimeError(
+                "Missing TF_TOKEN_app_terraform_io and Vault is disabled for this provisioner."
+            )
 
         os.environ["TF_TOKEN_app_terraform_io"] = vault_client.secrets.kv.v2.read_secret(
             TERRAFORM_CLOUD_SECRETS_PATH
-        )['data']['data']['access_token']
+        )["data"]["data"]["access_token"]
 
     if use_terraform:
         os.environ["TF_DATA_DIR"] = str(env.PROV_RUN_DIR / '.terraform')
@@ -209,13 +218,23 @@ def import_preprovision_module(project: str, package: str):
     except ModuleNotFoundError:
         return None
 
-def make_terragrunt_command(script_path, project, package, get_global_vars_fn):
+def make_terragrunt_command(
+    script_path,
+    project,
+    package,
+    get_global_vars_fn,
+    use_vault,
+):
     """
     Create a Terragrunt command function for a specific project.
     """
 
     def command():
-        tools = init_environment(script_path, use_terragrunt=True)
+        tools = init_environment(
+            script_path,
+            use_terragrunt=True,
+            use_vault=use_vault,
+        )
         write_terragrunt_vars(tools.env, "", get_global_vars_fn(tools))
 
         mod = import_preprovision_module(project, package)
@@ -242,7 +261,12 @@ def make_terragrunt_command(script_path, project, package, get_global_vars_fn):
 
     return command
 
-def make_terragrunt_app(script_path: Path, package: str, get_global_vars_fn: callable):
+def make_terragrunt_app(
+    script_path: Path,
+    package: str,
+    get_global_vars_fn: callable,
+    use_vault: bool = True,
+):
     """
     Create a Typer app for provisioning a Terragrunt project.
     """
@@ -257,11 +281,23 @@ def make_terragrunt_app(script_path: Path, package: str, get_global_vars_fn: cal
 
     for project in projects:
         # Register projects with Typer
-        app.command(name=project)(make_terragrunt_command(script_path, project, package, get_global_vars_fn))
+        app.command(name=project)(
+            make_terragrunt_command(
+                script_path,
+                project,
+                package,
+                get_global_vars_fn,
+                use_vault,
+            )
+        )
 
     @app.command()
     def all():
-        tools = init_environment(script_path, use_terragrunt=True)
+        tools = init_environment(
+            script_path,
+            use_terragrunt=True,
+            use_vault=use_vault,
+        )
         write_terragrunt_vars(tools.env, "", get_global_vars_fn(tools))
 
         # write vars for each project

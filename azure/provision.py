@@ -63,11 +63,18 @@ def get_vault_tf_vars(tools):
 
 @app.command()
 def all():
-    tools = init_environment(SCRIPT_PATH, use_terraform=True)
-
     tf_vars = get_env_tf_vars()
-    if tools.vault_client and len(tf_vars) < len(ENV_TF_VARS):
-        tf_vars.update(get_vault_tf_vars(tools))
+    missing_credentials = [name for name in ENV_TF_VARS if name not in tf_vars]
+    tools = init_environment(
+        SCRIPT_PATH,
+        use_terraform=True,
+        use_vault=bool(missing_credentials),
+    )
+
+    if missing_credentials:
+        vault_tf_vars = get_vault_tf_vars(tools)
+        for name in missing_credentials:
+            tf_vars[name] = vault_tf_vars[name]
 
     run_terraform(tools, tf_vars)
 
