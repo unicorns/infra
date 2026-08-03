@@ -8,6 +8,11 @@ terraform {
   }
 
   required_providers {
+    azapi = {
+      source  = "Azure/azapi"
+      version = "~> 2.11.0"
+    }
+
     azurerm = {
       source  = "hashicorp/azurerm"
       version = "~> 4.25.0"
@@ -108,6 +113,15 @@ provider "azurerm" {
   client_id       = var.app_client_id
   tenant_id       = var.app_tenant_id
   client_secret   = var.app_client_secret
+}
+
+provider "azapi" {
+  subscription_id = var.subscription_id
+  client_id       = var.app_client_id
+  tenant_id       = var.app_tenant_id
+  client_secret   = var.app_client_secret
+
+  enable_preflight = true
 }
 
 data "azurerm_client_config" "current" {}
