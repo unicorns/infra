@@ -2,10 +2,11 @@
 
 ## Ownership boundary
 
-This repository owns the shared platform: AKS, node pools, ingress-nginx,
-monitoring, the Secrets Store CSI add-on, the shared Key Vault, and the static
-ingress IP. Application repositories own their namespace-level workloads and
-CI/CD pipelines.
+This repository owns the shared platform and application registration: AKS,
+node pools, ingress-nginx, monitoring, the Secrets Store CSI add-on, shared and
+application Key Vaults, identities, namespace access, deployment trust, and DNS.
+Application repositories own their namespace-level workloads and CI/CD
+pipelines.
 
 Application access uses Microsoft Entra authentication and namespace-scoped
 Kubernetes RBAC. Local AKS accounts are disabled. Never give an application
@@ -79,7 +80,7 @@ Actions performs the same sequence.
 
 ## Application onboarding
 
-Each application needs a one-time platform registration:
+Each application needs a one-time, infrastructure-owned platform registration:
 
 - a namespace;
 - a Microsoft Entra deployment identity federated to its protected GitHub
@@ -90,6 +91,12 @@ Each application needs a one-time platform registration:
 
 Applications should use a dedicated Key Vault and AKS workload identity for
 runtime secrets. Secret values must not pass through GitHub Actions.
+
+Private registry credentials are the exception to declarative registration:
+Terraform must not import them because provider state would retain the secret
+data. Create and rotate the namespace pull Secret out of band, and let the
+application reference its agreed name without granting its deployer access to
+Kubernetes Secrets.
 
 Follow [Deploy a satellite application](satellite-app-deployment.md) for the
 one-time permission setup and application-owned release procedure.
