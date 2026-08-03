@@ -27,6 +27,7 @@ PROVISION_JOBS = [
             "ARM_CLIENT_SECRET": "${{ secrets.ARM_CLIENT_SECRET }}",
             "AZURE_KEY_VAULT_ADMIN_OBJECT_IDS": "${{ vars.AZURE_KEY_VAULT_ADMIN_OBJECT_IDS }}",
             "AZURE_AKS_ADMIN_GROUP_OBJECT_IDS": "${{ vars.AZURE_AKS_ADMIN_GROUP_OBJECT_IDS }}",
+            "CLOUDFLARE_API_TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}",
         },
     },
 ]

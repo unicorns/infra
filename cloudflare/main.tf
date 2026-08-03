@@ -17,6 +17,15 @@ terraform {
   }
 }
 
+variable "cloudflare_api_token" {
+  type      = string
+  sensitive = true
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+
 # The record remains live while ownership moves out of this repository.
 removed {
   from = cloudflare_record.gate_controller
