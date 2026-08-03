@@ -7,6 +7,7 @@ from unittest import mock
 
 from azure import provision as azure_provision
 from common.provisioner_utils import (
+    get_terraform_output,
     ProvisionerTools,
     import_preprovision_module,
     run_terragrunt,
@@ -78,6 +79,10 @@ class AzureProvisionerTests(unittest.TestCase):
                 0o600,
             )
             self.assertEqual(
+                (kubeconfig_path.stat().st_uid, kubeconfig_path.stat().st_gid),
+                (output_directory.stat().st_uid, output_directory.stat().st_gid),
+            )
+            self.assertEqual(
                 env_path.read_text().splitlines(),
                 [
                     "AKS_CLUSTER_NAME=cluster",
@@ -121,6 +126,24 @@ class KubernetesProvisionerTests(unittest.TestCase):
                 "GATE_CONTROLLER_CLOUD_V3_IMAGE",
             ):
                 module.get_vars(None, "gate-controller-cloud-v3")
+
+
+class TerraformOutputTests(unittest.TestCase):
+    @mock.patch("common.provisioner_utils.run_terraform_generic")
+    def test_accepts_one_json_object_after_diagnostics(self, run_command):
+        run_command.return_value.stdout = 'diagnostic\n{"value": 1}\n'
+
+        self.assertEqual(
+            get_terraform_output(mock.sentinel.environment),
+            {"value": 1},
+        )
+
+    @mock.patch("common.provisioner_utils.run_terraform_generic")
+    def test_rejects_ambiguous_json_objects(self, run_command):
+        run_command.return_value.stdout = '{"first": 1}\n{"second": 2}'
+
+        with self.assertRaisesRegex(RuntimeError, "exactly one JSON object"):
+            get_terraform_output(mock.sentinel.environment)
 
 
 if __name__ == "__main__":

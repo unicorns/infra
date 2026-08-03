@@ -4,6 +4,7 @@ import os
 import subprocess
 from collections import namedtuple
 from itertools import chain
+from json import JSONDecodeError, JSONDecoder
 from pathlib import Path
 
 from common.cli_utils import get_app
@@ -121,7 +122,27 @@ def get_terraform_output(env: ProvisionerEnvironment):
         ["-json"],
         subprocess_args={"capture_output": True, "text": True},
     )
-    return json.loads(result.stdout)
+    try:
+        return json.loads(result.stdout)
+    except JSONDecodeError as error:
+        decoder = JSONDecoder()
+        objects = []
+        position = 0
+        while (start := result.stdout.find("{", position)) != -1:
+            try:
+                value, length = decoder.raw_decode(result.stdout[start:])
+                if isinstance(value, dict):
+                    objects.append(value)
+                position = start + length
+            except JSONDecodeError:
+                position = start + 1
+
+        if len(objects) == 1:
+            return objects[0]
+
+        raise RuntimeError(
+            "Terraform output did not contain exactly one JSON object."
+        ) from error
 
 
 def run_terraform(

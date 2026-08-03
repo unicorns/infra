@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 from pathlib import Path
 
 from common.cli_utils import get_app
@@ -80,6 +81,8 @@ def write_stack_outputs(outputs: dict):
 
     OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
     KUBECONFIG_PATH.write_text(kubeconfig)
+    output_owner = OUTPUTS_DIR.stat()
+    os.chown(KUBECONFIG_PATH, output_owner.st_uid, output_owner.st_gid)
     KUBECONFIG_PATH.chmod(0o600)
     ENV_PATH.write_text(
         "".join(f"{name}={value}\n" for name, value in values.items())
