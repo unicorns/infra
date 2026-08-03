@@ -59,17 +59,14 @@ jobs:
     needs:
       - update-workflow
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      AZURE_KEY_VAULT_ADMIN_OBJECT_IDS: ${{ vars.AZURE_KEY_VAULT_ADMIN_OBJECT_IDS }}
     steps:
-      - name: Set up Vault
-        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
-        with:
-          exportToken: true
-          method: jwt
-          url: ${{ vars.VAULT_ADDR }}
-          role: ${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}
       - name: Checkout repository
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with: {}
@@ -87,24 +84,16 @@ jobs:
           fi
       - name: Provision azure
         run: docker compose run provisioner ./azure/provision.py all
-      - name: Revoke Vault token
-        if: always()
-        run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
   provision-cloudflare:
     needs:
+      - provision-azure
       - update-workflow
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GATE_CONTROLLER_ORIGIN_IP: ${{ vars.INGRESS_EXTERNAL_IP }}
     steps:
-      - name: Set up Vault
-        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
-        with:
-          exportToken: true
-          method: jwt
-          url: ${{ vars.VAULT_ADDR }}
-          role: ${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}
       - name: Checkout repository
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with: {}
@@ -122,164 +111,20 @@ jobs:
           fi
       - name: Provision cloudflare
         run: docker compose run provisioner ./cloudflare/provision.py all
-      - name: Revoke Vault token
-        if: always()
-        run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
-  provision-elastic:
-    needs:
-      - update-workflow
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Set up Vault
-        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
-        with:
-          exportToken: true
-          method: jwt
-          url: ${{ vars.VAULT_ADDR }}
-          role: ${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}
-      - name: Checkout repository
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
-        with: {}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0
-      - name: Build the provisioner
-        run: docker compose build provisioner
-      - name: Set up environment variables
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo 'NO_CONFIRM=true' >> .env
-            echo 'BACK_UP_STATE=true' >> .env
-          else
-            echo 'DRY_RUN=true' >> .env
-          fi
-      - name: Provision elastic
-        run: docker compose run provisioner ./elastic/provision.py all
-      - name: Revoke Vault token
-        if: always()
-        run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
-  provision-github:
-    needs:
-      - update-workflow
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Set up Vault
-        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
-        with:
-          exportToken: true
-          method: jwt
-          url: ${{ vars.VAULT_ADDR }}
-          role: ${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}
-      - name: Checkout repository
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
-        with: {}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0
-      - name: Build the provisioner
-        run: docker compose build provisioner
-      - name: Set up environment variables
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo 'NO_CONFIRM=true' >> .env
-            echo 'BACK_UP_STATE=true' >> .env
-          else
-            echo 'DRY_RUN=true' >> .env
-          fi
-      - name: Provision github
-        run: docker compose run provisioner ./github/provision.py all
-      - name: Revoke Vault token
-        if: always()
-        run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
-  provision-kubernetes:
-    needs:
-      - update-workflow
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Set up Vault
-        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
-        with:
-          exportToken: true
-          method: jwt
-          url: ${{ vars.VAULT_ADDR }}
-          role: ${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}
-      - name: Checkout repository
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
-        with: {}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0
-      - name: Build the provisioner
-        run: docker compose build provisioner
-      - name: Set up environment variables
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo 'NO_CONFIRM=true' >> .env
-            echo 'BACK_UP_STATE=true' >> .env
-          else
-            echo 'DRY_RUN=true' >> .env
-          fi
-      - name: Provision kubernetes
-        run: docker compose run provisioner ./kubernetes/provision.py all
-      - name: Revoke Vault token
-        if: always()
-        run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
-  provision-kubernetes-aks2:
-    needs:
-      - update-workflow
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Set up Vault
-        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
-        with:
-          exportToken: true
-          method: jwt
-          url: ${{ vars.VAULT_ADDR }}
-          role: ${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}
-      - name: Checkout repository
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
-        with: {}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0
-      - name: Build the provisioner
-        run: docker compose build provisioner
-      - name: Set up environment variables
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo 'NO_CONFIRM=true' >> .env
-            echo 'BACK_UP_STATE=true' >> .env
-          else
-            echo 'DRY_RUN=true' >> .env
-          fi
-      - name: Provision kubernetes-aks2
-        run: docker compose run provisioner ./kubernetes-aks2/provision.py all
-      - name: Revoke Vault token
-        if: always()
-        run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
   provision-kubernetes-shared:
     needs:
+      - provision-azure
       - update-workflow
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+      KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+      AKS_CLUSTER_NAME: ${{ vars.AKS_CLUSTER_NAME }}
+      AZURE_KEY_VAULT_NAME: ${{ vars.AZURE_KEY_VAULT_NAME }}
+      AZURE_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      KEY_VAULT_SECRET_PROVIDER_CLIENT_ID: ${{ vars.KEY_VAULT_SECRET_PROVIDER_CLIENT_ID }}
+      INGRESS_EXTERNAL_IP: ${{ vars.INGRESS_EXTERNAL_IP }}
     steps:
-      - name: Set up Vault
-        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
-        with:
-          exportToken: true
-          method: jwt
-          url: ${{ vars.VAULT_ADDR }}
-          role: ${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}
       - name: Checkout repository
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with: {}
@@ -297,54 +142,11 @@ jobs:
           fi
       - name: Provision kubernetes-shared
         run: docker compose run provisioner ./kubernetes-shared/provision.py all
-      - name: Revoke Vault token
-        if: always()
-        run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
-  provision-users:
-    needs:
-      - update-workflow
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Set up Vault
-        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b
-        with:
-          exportToken: true
-          method: jwt
-          url: ${{ vars.VAULT_ADDR }}
-          role: ${{ github.ref_name == 'main' && vars.VAULT_ROLE_RW || vars.VAULT_ROLE_RO }}
-      - name: Checkout repository
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
-        with: {}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0
-      - name: Build the provisioner
-        run: docker compose build provisioner
-      - name: Set up environment variables
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo 'NO_CONFIRM=true' >> .env
-            echo 'BACK_UP_STATE=true' >> .env
-          else
-            echo 'DRY_RUN=true' >> .env
-          fi
-      - name: Provision users
-        run: docker compose run provisioner ./users/provision.py all
-      - name: Revoke Vault token
-        if: always()
-        run: 'curl -X POST -sv -H "X-Vault-Token: ${{ env.VAULT_TOKEN }}" ${{ vars.VAULT_ADDR }}/v1/auth/token/revoke-self'
   all-good:
     needs:
       - provision-azure
       - provision-cloudflare
-      - provision-elastic
-      - provision-github
-      - provision-kubernetes
-      - provision-kubernetes-aks2
       - provision-kubernetes-shared
-      - provision-users
       - update-workflow
     runs-on: ubuntu-latest
     if: always()
