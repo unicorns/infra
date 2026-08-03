@@ -36,6 +36,7 @@ PROVISIONERS = {
             "AZURE_TENANT_ID": "${{ secrets.ARM_TENANT_ID }}",
             "KEY_VAULT_SECRET_PROVIDER_CLIENT_ID": "${{ vars.KEY_VAULT_SECRET_PROVIDER_CLIENT_ID }}",
             "INGRESS_EXTERNAL_IP": "${{ vars.INGRESS_EXTERNAL_IP }}",
+            "GATE_CONTROLLER_CLOUD_V3_IMAGE": "${{ vars.GATE_CONTROLLER_CLOUD_V3_IMAGE }}",
         },
     },
 }

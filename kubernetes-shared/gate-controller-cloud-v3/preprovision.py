@@ -15,5 +15,5 @@ def get_vars(tools, project):
             "GATE_CONTROLLER_CLOUD_V3_HOST",
             urlparse(GATE_CONTROLLER_CLOUD_V3_ADDR).hostname,
         ),
-        "image": os.environ.get("GATE_CONTROLLER_CLOUD_V3_IMAGE", DEFAULT_IMAGE),
+        "image": os.environ.get("GATE_CONTROLLER_CLOUD_V3_IMAGE") or DEFAULT_IMAGE,
     }
