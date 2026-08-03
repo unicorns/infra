@@ -28,6 +28,7 @@ class AzureProvisionerTests(unittest.TestCase):
             "ARM_CLIENT_ID": "client",
             "ARM_TENANT_ID": "tenant",
             "ARM_CLIENT_SECRET": "secret",
+            "TF_TOKEN_app_terraform_io": "terraform-token",
             "AZURE_AKS_ADMIN_GROUP_OBJECT_IDS": "aks-first, aks-second",
             "AZURE_KEY_VAULT_ADMIN_OBJECT_IDS": "first, second",
         }
@@ -40,6 +41,7 @@ class AzureProvisionerTests(unittest.TestCase):
                     "app_client_id": "client",
                     "app_tenant_id": "tenant",
                     "app_client_secret": "secret",
+                    "terraform_cloud_token": "terraform-token",
                     "aks_admin_group_object_ids": ["aks-first", "aks-second"],
                     "key_vault_admin_object_ids": ["first", "second"],
                 },
@@ -51,6 +53,7 @@ class AzureProvisionerTests(unittest.TestCase):
             "ARM_CLIENT_ID": "client",
             "ARM_TENANT_ID": "tenant",
             "ARM_CLIENT_SECRET": "secret",
+            "TF_TOKEN_app_terraform_io": "terraform-token",
             "AZURE_AKS_ADMIN_GROUP_OBJECT_IDS": " , ",
         }
 

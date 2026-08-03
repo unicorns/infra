@@ -24,6 +24,7 @@ ENV_TF_VARS = {
     "app_client_id": ("ARM_CLIENT_ID", "AZURE_CLIENT_ID"),
     "app_tenant_id": ("ARM_TENANT_ID", "AZURE_TENANT_ID"),
     "app_client_secret": ("ARM_CLIENT_SECRET", "AZURE_CLIENT_SECRET"),
+    "terraform_cloud_token": ("TF_TOKEN_app_terraform_io",),
 }
 
 AKS_ADMIN_GROUP_ENV = "AZURE_AKS_ADMIN_GROUP_OBJECT_IDS"

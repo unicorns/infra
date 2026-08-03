@@ -27,6 +27,12 @@ Provisioning requires `TF_TOKEN_app_terraform_io`, the four standard `ARM_*`
 service-principal variables, `AZURE_KEY_VAULT_ADMIN_OBJECT_IDS`, and
 `AZURE_AKS_ADMIN_GROUP_OBJECT_IDS`.
 
+The Azure stack also declaratively owns application-state workspaces in HCP
+Terraform. The provisioner passes `TF_TOKEN_app_terraform_io` as a sensitive,
+ephemeral provider input; the credential must be able to create and update
+workspaces in the `unicornsftw` organization. It is never stored in Terraform
+state or outputs.
+
 The AKS administrator variable must contain one or more comma-separated
 Microsoft Entra group object IDs. Both human operators and the infrastructure
 service principal must belong to one of those groups before local AKS accounts
