@@ -1,54 +1,24 @@
 # Shared AKS Stack
 
-This is the replacement for the old `aks1` plus `aks2` layout.
-
 ## Cost guardrails
 
-The target steady state is one shared AKS cluster:
+The stack limits its fixed Azure footprint to:
 
-- one always-on `Standard_B2s` system node
-- one Standard Load Balancer shared by all ingress hosts
-- one static Standard public IP for ingress
-- one small managed OS disk
-- one optional spot node pool with `min_count = 0` and a `0.02 USD/hour` max
-  price
-- Kubernetes `1.34.8`, the latest patch for the current West US 3 default minor
-  at the time this runbook was written
-- Azure Key Vault instead of self-hosted Vault
-- Azure Monitor Container Insights with Log Analytics capped at `0.25 GB/day`
-- no Elastic, Kibana, Fleet Server, or in-cluster Vault
+- one `Standard_B2s` system node
+- one shared Standard Load Balancer and static public ingress IP
+- one optional autoscaling spot pool with `min_count = 0` and a
+  `0.02 USD/hour` maximum price
+- one `32 GB` managed OS disk per active node
+- Log Analytics capped at `0.25 GB/day`
+- one `1 GiB` gate-controller data volume
 
-The old two-cluster setup billed around `240-250 CAD/month` once both clusters
-were running. This stack is intended to stay closer to `95-125 CAD/month` before
-new app-specific storage or traffic, leaving room under a `2000 CAD/year` credit
-budget. Raising the system node from `Standard_B2s` to `Standard_B2ps_v2` buys
-more memory and should still be materially cheaper than two clusters, but it
-reduces the monthly margin.
+The shared ingress and cluster should be reused for additional applications.
+Application-specific databases, disks, traffic, and log volume add to this
+baseline.
 
-## Provision order
+## Provisioning
 
-The provisioner now supports standard environment variables so the replacement
-stack can be bootstrapped without the deleted self-hosted Vault.
-
-The old `aks1` and `aks2` resources were removed from the active Azure
-configuration. Because the clusters were deleted outside Terraform, the first
-real Terraform Cloud plan may show cleanup for old state addresses such as:
-
-```text
-azurerm_resource_group.unicorns-aks1
-azurerm_kubernetes_cluster.unicorns-aks1
-azurerm_kubernetes_cluster_node_pool.aks1spot1
-azurerm_kubernetes_cluster_node_pool.aks1spot4
-azurerm_resource_group.unicorns-aks2
-azurerm_kubernetes_cluster.unicorns-aks2
-azurerm_kubernetes_cluster_node_pool.aks2spot1
-```
-
-Review that plan carefully before applying. If Terraform errors because Azure
-already has no matching resource, remove only the stale old-cluster addresses
-from Terraform Cloud state and rerun the plan.
-
-1. Provide Terraform Cloud and Azure credentials.
+1. Export credentials and required configuration.
 
    ```sh
    export TF_TOKEN_app_terraform_io="..."
@@ -57,21 +27,28 @@ from Terraform Cloud state and rerun the plan.
    export ARM_TENANT_ID="..."
    export ARM_CLIENT_SECRET="..."
    export AZURE_KEY_VAULT_ADMIN_OBJECT_IDS="$(az ad signed-in-user show --query id -o tsv)"
+   export CLOUDFLARE_API_TOKEN="..."
+   export GATE_CONTROLLER_CLOUD_V3_IMAGE="ghcr.io/ben-z/gate-controller/cloud-v3:sha-..."
    ```
 
-2. Review the Azure plan.
+2. Build the provisioner.
 
    ```sh
-   DRY_RUN=1 docker compose run --rm provisioner ./azure/provision.py all
+   docker compose build provisioner
    ```
 
-3. Apply Azure only after reviewing the plan.
+3. Provision Azure and load its generated outputs.
 
    ```sh
    docker compose run --rm provisioner ./azure/provision.py all
+   cat outputs/azure.env >> .env
    ```
 
-4. Put gate-controller secrets in Azure Key Vault.
+   The Azure provisioner writes the AKS kubeconfig to
+   `outputs/unicorns-aks-kubeconfig` and writes non-secret downstream values to
+   `outputs/azure.env`.
+
+4. Set the gate-controller secrets.
 
    ```sh
    az keyvault secret set \
@@ -90,74 +67,30 @@ from Terraform Cloud state and rerun the plan.
      --value 'replace-this'
    ```
 
-5. Fetch kubeconfig into the repo `outputs` directory.
+5. Provision DNS and Kubernetes.
 
    ```sh
-   mkdir -p outputs
-   az aks get-credentials \
-     --resource-group unicorns-aks-rg \
-     --name unicorns-aks \
-     --file ./outputs/unicorns-aks-kubeconfig \
-     --overwrite-existing
-   ```
-
-6. Export Kubernetes stack inputs.
-
-   ```sh
-   export KUBE_CONFIG_PATH=./outputs/unicorns-aks-kubeconfig
-   export AKS_CLUSTER_NAME=unicorns-aks
-   export AZURE_KEY_VAULT_NAME=unicornsftw-kv
-   export AZURE_TENANT_ID="$(az account show --query tenantId -o tsv)"
-   export KEY_VAULT_SECRET_PROVIDER_CLIENT_ID="$(
-     az aks show \
-       --resource-group unicorns-aks-rg \
-       --name unicorns-aks \
-       --query addonProfiles.azureKeyvaultSecretsProvider.identity.clientId \
-       -o tsv
-   )"
-   export INGRESS_EXTERNAL_IP="$(
-     terraform -chdir=azure output -raw ingress_static_ip
-   )"
-   ```
-
-7. Review and apply the Kubernetes stack.
-
-   ```sh
-   DRY_RUN=1 docker compose run --rm provisioner ./kubernetes-shared/provision.py all
+   docker compose run --rm provisioner ./cloudflare/provision.py all
    docker compose run --rm provisioner ./kubernetes-shared/provision.py all
    ```
 
-## DNS
+Set `DRY_RUN=1` before these commands to plan without applying changes. GitHub
+Actions performs the same sequence and passes Azure's generated values directly
+to the dependent provisioners.
 
-After `kubernetes-shared/system` applies, the ingress service should use the
-static Azure public IP from the Azure stack. Cloudflare is managed by the
-`cloudflare` Terraform stack:
+## Operations
+
+Terraform manages the Key Vault, its AKS access policy, and the Kubernetes
+`SecretProviderClass`; secret values are not stored in Terraform state.
+
+The gate controller reads mounted secrets at process startup. Restart the
+deployment after rotating a secret:
 
 ```sh
-export CLOUDFLARE_API_TOKEN="..."
-export GATE_CONTROLLER_ORIGIN_IP="$(terraform -chdir=azure output -raw ingress_static_ip)"
-
-docker compose run --rm provisioner ./cloudflare/provision.py import-gate-controller
-DRY_RUN=1 docker compose run --rm provisioner ./cloudflare/provision.py all
-docker compose run --rm provisioner ./cloudflare/provision.py all
+kubectl --kubeconfig ./outputs/unicorns-aks-kubeconfig \
+  -n gate-controller-cloud-v3 \
+  rollout restart deployment/gate-controller-cloud-v3
 ```
 
-The `all` command also imports the existing A record automatically before a real
-apply. Running the import command separately makes the first dry run reflect the
-adopted record instead of showing a create.
-
-## Notes
-
-- Secret values are not managed by Terraform, so they do not land in Terraform
-  state. Terraform manages the Key Vault, AKS access policy, and Kubernetes
-  `SecretProviderClass`.
-- The gate controller reads Key Vault secrets from mounted files at startup.
-  After rotating a secret, restart the deployment:
-
-  ```sh
-  kubectl --kubeconfig ./outputs/unicorns-aks-kubeconfig \
-    -n gate-controller-cloud-v3 rollout restart deployment/gate-controller-cloud-v3
-  ```
-
-- The gate controller uses one `ReadWriteOnce` PVC and deploys with `Recreate`
-  strategy so SQLite has a single writer.
+The gate controller uses one `ReadWriteOnce` volume and a `Recreate` deployment
+strategy so SQLite has a single writer.

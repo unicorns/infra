@@ -74,7 +74,7 @@ def get_vars(tools: ProvisionerTools):
     }
 
 
-app = make_terragrunt_app(SCRIPT_PATH, __package__, get_vars, use_vault=False)
+app = make_terragrunt_app(SCRIPT_PATH, get_vars)
 
 if __name__ == "__main__":
     app()

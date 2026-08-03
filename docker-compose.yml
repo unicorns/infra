@@ -14,17 +14,20 @@ services:
       # The .github/workflows directory is mounted as rw so that the provisioner
       # can generate workflows.
       - ./.github/workflows:/${COMPOSE_PROJECT_NAME:?}/.github/workflows:rw
+      # Terragrunt copies provider locks from its cache after initialization.
+      - ./kubernetes-shared/gate-controller-cloud-v3/.terraform.lock.hcl:/${COMPOSE_PROJECT_NAME:?}/kubernetes-shared/gate-controller-cloud-v3/.terraform.lock.hcl:rw
+      - ./kubernetes-shared/kube-state-metrics/.terraform.lock.hcl:/${COMPOSE_PROJECT_NAME:?}/kubernetes-shared/kube-state-metrics/.terraform.lock.hcl:rw
+      - ./kubernetes-shared/system/.terraform.lock.hcl:/${COMPOSE_PROJECT_NAME:?}/kubernetes-shared/system/.terraform.lock.hcl:rw
     tmpfs:
       - /run:exec
       - /tmp:exec
     working_dir: /${COMPOSE_PROJECT_NAME:?}
-    # init handles singal forwarding so the container can be stopped gracefully.
+    # init handles signal forwarding so the container can be stopped gracefully.
     init: true
     environment:
       PYTHONPATH: /${COMPOSE_PROJECT_NAME:?}
       DRY_RUN: ${DRY_RUN:-}
       NO_CONFIRM: ${NO_CONFIRM:-}
-      BACK_UP_STATE: ${BACK_UP_STATE:-}
       TF_TOKEN_app_terraform_io: ${TF_TOKEN_app_terraform_io:-}
       ARM_SUBSCRIPTION_ID: ${ARM_SUBSCRIPTION_ID:-}
       ARM_CLIENT_ID: ${ARM_CLIENT_ID:-}
@@ -53,5 +56,4 @@ services:
       CF_API_TOKEN: ${CF_API_TOKEN:-}
       CLOUDFLARE_ZONE_NAME: ${CLOUDFLARE_ZONE_NAME:-}
       GATE_CONTROLLER_CLOUDFLARE_PROXIED: ${GATE_CONTROLLER_CLOUDFLARE_PROXIED:-}
-      VAULT_TOKEN: ${VAULT_TOKEN:-}
       CI: ${CI:-}
