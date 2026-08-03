@@ -4,16 +4,16 @@ from pathlib import Path
 
 from common.cli_utils import get_app
 from common.provisioner_utils import (
+    get_terraform_output,
     init_environment,
     run_terraform,
 )
 from common.utils import get_env_value
-from common.variables import (
-    AZURE_TERRAFORM_PROVISIONER_APP_SECRETS_PATH,
-    AZURE_SECRETS_PATH,
-)
 
 SCRIPT_PATH = Path(__file__)
+OUTPUTS_DIR = SCRIPT_PATH.parent.parent / "outputs"
+KUBECONFIG_PATH = OUTPUTS_DIR / "unicorns-aks-kubeconfig"
+ENV_PATH = OUTPUTS_DIR / "azure.env"
 
 app = get_app()
 
@@ -25,58 +25,72 @@ ENV_TF_VARS = {
 }
 
 
-def get_env_tf_vars():
-    tf_vars = {
+def get_tf_vars():
+    variables = {
         tf_name: value
         for tf_name, env_names in ENV_TF_VARS.items()
         if (value := get_env_value(*env_names))
     }
 
+    missing = [name for name in ENV_TF_VARS if name not in variables]
+    if missing:
+        required = ["/".join(ENV_TF_VARS[name]) for name in missing]
+        raise RuntimeError(
+            "Missing required Azure credentials: " + ", ".join(required)
+        )
+
     if admin_ids := get_env_value(
         "AZURE_KEY_VAULT_ADMIN_OBJECT_IDS",
         "KEY_VAULT_ADMIN_OBJECT_IDS",
     ):
-        tf_vars["key_vault_admin_object_ids"] = [
+        variables["key_vault_admin_object_ids"] = [
             object_id.strip()
             for object_id in admin_ids.split(",")
             if object_id.strip()
         ]
 
-    return tf_vars
+    return variables
 
 
-def get_vault_tf_vars(tools):
-    app_secrets = tools.vault_client.secrets.kv.v2.read_secret(
-        AZURE_TERRAFORM_PROVISIONER_APP_SECRETS_PATH
-    )["data"]["data"]
-    subscription_id = tools.vault_client.secrets.kv.v2.read_secret(
-        AZURE_SECRETS_PATH
-    )["data"]["data"]["subscription_id"]
+def require_output(outputs: dict, name: str):
+    output = outputs.get(name)
+    if not isinstance(output, dict) or output.get("value") in (None, ""):
+        raise RuntimeError(f"Missing required Azure Terraform output: {name}")
 
-    return {
-        "subscription_id": subscription_id,
-        "app_client_id": app_secrets["client_id"],
-        "app_client_secret": app_secrets["client_secret"],
-        "app_tenant_id": app_secrets["tenant_id"],
+    return output["value"]
+
+
+def write_stack_outputs(outputs: dict):
+    values = {
+        "AKS_CLUSTER_NAME": require_output(outputs, "aks_cluster_name"),
+        "AZURE_KEY_VAULT_NAME": require_output(outputs, "key_vault_name"),
+        "KEY_VAULT_TENANT_ID": require_output(outputs, "key_vault_tenant_id"),
+        "KEY_VAULT_SECRET_PROVIDER_CLIENT_ID": require_output(
+            outputs,
+            "aks_key_vault_secret_provider_client_id",
+        ),
+        "INGRESS_EXTERNAL_IP": require_output(outputs, "ingress_static_ip"),
+        "GATE_CONTROLLER_ORIGIN_IP": require_output(
+            outputs,
+            "ingress_static_ip",
+        ),
+        "KUBE_CONFIG_PATH": "./outputs/unicorns-aks-kubeconfig",
     }
+    kubeconfig = require_output(outputs, "aks_kube_config")
+
+    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+    KUBECONFIG_PATH.write_text(kubeconfig)
+    KUBECONFIG_PATH.chmod(0o600)
+    ENV_PATH.write_text(
+        "".join(f"{name}={value}\n" for name, value in values.items())
+    )
 
 
 @app.command()
 def all():
-    tf_vars = get_env_tf_vars()
-    missing_credentials = [name for name in ENV_TF_VARS if name not in tf_vars]
-    tools = init_environment(
-        SCRIPT_PATH,
-        use_terraform=True,
-        use_vault=bool(missing_credentials),
-    )
-
-    if missing_credentials:
-        vault_tf_vars = get_vault_tf_vars(tools)
-        for name in missing_credentials:
-            tf_vars[name] = vault_tf_vars[name]
-
-    run_terraform(tools, tf_vars)
+    tools = init_environment(SCRIPT_PATH, use_terraform=True)
+    run_terraform(tools, get_tf_vars())
+    write_stack_outputs(get_terraform_output(tools.env))
 
 
 if __name__ == "__main__":

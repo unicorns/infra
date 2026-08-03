@@ -162,13 +162,13 @@ def import_gate_controller_record(tools, tf_vars: dict):
 
 @app.command(name="import-gate-controller")
 def import_gate_controller():
-    tools = init_environment(SCRIPT_PATH, use_terraform=True, use_vault=False)
+    tools = init_environment(SCRIPT_PATH, use_terraform=True)
     import_gate_controller_record(tools, get_env_tf_vars())
 
 
 @app.command()
 def all():
-    tools = init_environment(SCRIPT_PATH, use_terraform=True, use_vault=False)
+    tools = init_environment(SCRIPT_PATH, use_terraform=True)
     tf_vars = get_env_tf_vars()
 
     if not os.environ.get("DRY_RUN"):

@@ -1,4 +1,4 @@
-import importlib
+import importlib.util
 import json
 import os
 import subprocess
@@ -6,473 +6,303 @@ from collections import namedtuple
 from itertools import chain
 from pathlib import Path
 
-import hvac
-import typer
-
 from common.cli_utils import get_app
-from common.utils import deep_equal, extract_json_objects
-from common.variables import TERRAFORM_CLOUD_SECRETS_PATH
-from vault.vault_utils import get_vault_client
 
-SCRIPT_PATH = Path(__file__)
-BASE_DIR = SCRIPT_PATH.parent.parent
 
-ProvisionerEnvironment = namedtuple('ProvisionerEnvironment', [
-    'PROV_PROJ_NAME',
-    'PROV_BASE_DIR',
-    'PROV_CODE_DIR',
-    'PROV_RUN_DIR',
-])
+BASE_DIR = Path(__file__).parent.parent
 
-ProvisionerTools = namedtuple('ProvisionerTools', [
-    'env',
-    'vault_client',
-])
+ProvisionerEnvironment = namedtuple(
+    "ProvisionerEnvironment",
+    ["PROV_PROJ_NAME", "PROV_BASE_DIR", "PROV_CODE_DIR", "PROV_RUN_DIR"],
+)
+ProvisionerTools = namedtuple("ProvisionerTools", ["env"])
+
 
 def init_environment(
     script_path: Path,
     use_terraform: bool = False,
     use_terragrunt: bool = False,
-    use_vault: bool = True,
 ):
-    proj_name = script_path.parent.name
-
+    project_name = script_path.parent.name
     env = ProvisionerEnvironment(
-        PROV_PROJ_NAME=proj_name,
+        PROV_PROJ_NAME=project_name,
         PROV_BASE_DIR=BASE_DIR,
         PROV_CODE_DIR=script_path.parent,
-        PROV_RUN_DIR=Path('/run') / proj_name,
+        PROV_RUN_DIR=Path("/run") / project_name,
     )
 
-    # Create directories
     env.PROV_RUN_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Set environment variables
     for key, value in env._asdict().items():
         os.environ[key] = str(value)
-    
-    uses_iac = use_terraform or use_terragrunt
-    vault_client = get_vault_client() if uses_iac and use_vault else None
 
-    if uses_iac and not os.environ.get("TF_TOKEN_app_terraform_io"):
-        if not vault_client:
-            raise RuntimeError(
-                "Missing TF_TOKEN_app_terraform_io and Vault is disabled for this provisioner."
-            )
-
-        os.environ["TF_TOKEN_app_terraform_io"] = vault_client.secrets.kv.v2.read_secret(
-            TERRAFORM_CLOUD_SECRETS_PATH
-        )["data"]["data"]["access_token"]
+    if (use_terraform or use_terragrunt) and not os.environ.get(
+        "TF_TOKEN_app_terraform_io"
+    ):
+        raise RuntimeError("Missing TF_TOKEN_app_terraform_io.")
 
     if use_terraform:
-        os.environ["TF_DATA_DIR"] = str(env.PROV_RUN_DIR / '.terraform')
-    
+        os.environ["TF_DATA_DIR"] = str(env.PROV_RUN_DIR / ".terraform")
+
     if use_terragrunt:
-        # Terragrunt downloads and runs the Terraform project in this directory
-        # https://terragrunt.gruntwork.io/docs/reference/cli-options/#terragrunt-download-dir
-        os.environ["TERRAGRUNT_DOWNLOAD"] = str(env.PROV_RUN_DIR / '.terragrunt-cache')
-        
-    return ProvisionerTools(env=env, vault_client=vault_client)
+        os.environ["TERRAGRUNT_DOWNLOAD"] = str(
+            env.PROV_RUN_DIR / ".terragrunt-cache"
+        )
 
-############################################
-# Terraform functions
-############################################
+    return ProvisionerTools(env=env)
 
-def write_terraform_vars(env: ProvisionerEnvironment, vars_dict: dict):
-    with open(env.PROV_RUN_DIR / 'terraform.tfvars.json', 'w') as f:
-        f.write(json.dumps(vars_dict, indent=2))
+
+def write_terraform_vars(env: ProvisionerEnvironment, variables: dict):
+    with open(env.PROV_RUN_DIR / "terraform.tfvars.json", "w") as file:
+        json.dump(variables, file, indent=2)
+
 
 def get_terraform_var_flags(env: ProvisionerEnvironment):
-    var_flags = []
-    for var_file in chain(env.PROV_RUN_DIR.glob('*.tfvars'), env.PROV_RUN_DIR.glob('*.tfvars.json')):
-        var_flags.append(f'-var-file={str(var_file)}')
+    var_files = chain(
+        env.PROV_RUN_DIR.glob("*.tfvars"),
+        env.PROV_RUN_DIR.glob("*.tfvars.json"),
+    )
+    return [f"-var-file={var_file}" for var_file in var_files]
 
-    return var_flags
 
-def run_terraform_generic(env: ProvisionerEnvironment, command: str, additional_args=[], subprocess_args={}):
+def run_terraform_generic(
+    env: ProvisionerEnvironment,
+    command: str,
+    additional_args=None,
+    subprocess_args=None,
+):
     return subprocess.run(
-        ["terraform", f"-chdir={env.PROV_CODE_DIR}", command] + additional_args,
+        ["terraform", f"-chdir={env.PROV_CODE_DIR}", command]
+        + (additional_args or []),
         check=True,
-        **subprocess_args,
+        **(subprocess_args or {}),
     )
 
-def run_terraform_generic_with_var_files(env: ProvisionerEnvironment, command: str, additional_args=[]):
-    var_flags = get_terraform_var_flags(env)
 
-    return run_terraform_generic(env, command, var_flags + additional_args)
+def run_terraform_generic_with_var_files(
+    env: ProvisionerEnvironment,
+    command: str,
+    additional_args=None,
+):
+    return run_terraform_generic(
+        env,
+        command,
+        get_terraform_var_flags(env) + (additional_args or []),
+    )
 
-def run_terraform_init(env: ProvisionerEnvironment, additional_args=[]):
-    return run_terraform_generic(env, "init", [ "-lock-timeout=20m" ] + additional_args)
 
-def run_terraform_plan(env: ProvisionerEnvironment, additional_args=[]):
-    return run_terraform_generic_with_var_files(env, "plan", [ "-lock-timeout=20m", "-refresh=false" ] + additional_args)
+def run_terraform_init(env: ProvisionerEnvironment, additional_args=None):
+    return run_terraform_generic(
+        env,
+        "init",
+        ["-lock-timeout=20m"] + (additional_args or []),
+    )
 
-def run_terraform_apply(env: ProvisionerEnvironment, additional_args=[]):
-    return run_terraform_generic_with_var_files(env, "apply", [ "-lock-timeout=20m" ] + additional_args)
 
-def should_sync_output_state(tools: ProvisionerTools):
-    if os.environ.get("DRY_RUN"):
-        return False
+def run_terraform_plan(env: ProvisionerEnvironment, additional_args=None):
+    return run_terraform_generic_with_var_files(
+        env,
+        "plan",
+        ["-lock-timeout=20m", "-refresh=false"] + (additional_args or []),
+    )
 
-    if tools.vault_client:
-        return True
 
-    print("Skipping output/state backup because no Vault client is configured.")
-    return False
+def run_terraform_apply(env: ProvisionerEnvironment, additional_args=None):
+    return run_terraform_generic_with_var_files(
+        env,
+        "apply",
+        ["-lock-timeout=20m"] + (additional_args or []),
+    )
 
-def get_terraform_output(env: ProvisionerEnvironment, additional_args=[]):
-    res = run_terraform_generic(env, "output", ["-json"] + additional_args, subprocess_args={'capture_output': True, 'text': True})
-    assert res.returncode == 0, f"Failed to get Terraform output: {res.stderr}"
-    output = next(extract_json_objects(res.stdout))
 
-    return output
+def get_terraform_output(env: ProvisionerEnvironment):
+    result = run_terraform_generic(
+        env,
+        "output",
+        ["-json"],
+        subprocess_args={"capture_output": True, "text": True},
+    )
+    return json.loads(result.stdout)
 
-def get_terraform_state(env: ProvisionerEnvironment, additional_args=[]):
-    res = run_terraform_generic(env, "state", ["pull"] + additional_args, subprocess_args={'capture_output': True, 'text': True})
-    assert res.returncode == 0, f"Failed to get Terraform state: {res.stderr}"
-    state = next(extract_json_objects(res.stdout))
 
-    return state
-
-def run_terraform(tools: ProvisionerTools, vars_dict: dict, additional_init_args=[], additional_plan_args=[], additional_apply_args=[]):
-    write_terraform_vars(tools.env, vars_dict)
-
+def run_terraform(
+    tools: ProvisionerTools,
+    variables: dict,
+    additional_init_args=None,
+    additional_plan_args=None,
+    additional_apply_args=None,
+):
+    write_terraform_vars(tools.env, variables)
     run_terraform_init(tools.env, additional_init_args)
 
-    if os.environ.get('DRY_RUN'):
+    if os.environ.get("DRY_RUN"):
         run_terraform_plan(tools.env, additional_plan_args)
-    else:
-        run_terraform_apply(tools.env, additional_apply_args + (["-auto-approve"] if os.environ.get('NO_CONFIRM') else []))
-        if not should_sync_output_state(tools):
-            return
+        return
 
-        print("Checking whether to update output...")
-        output = get_terraform_output(tools.env)
-        update_output(tools, output, confirm=os.environ.get('NO_CONFIRM') != "true")
-        if os.environ.get('BACK_UP_STATE'):
-            state = get_terraform_state(tools.env)
-            back_up_state(tools, state, confirm=os.environ.get('NO_CONFIRM') != "true")
-
-############################################
-# Terragrunt functions
-############################################
-
-def run_terragrunt_generic(args = [],  subprocess_args={}):
-    return subprocess.run(
-        ["terragrunt"] + args,
-        check=True,
-        **subprocess_args,
+    approval_args = ["-auto-approve"] if os.environ.get("NO_CONFIRM") else []
+    run_terraform_apply(
+        tools.env,
+        (additional_apply_args or []) + approval_args,
     )
 
-def run_terragrunt_generic_with_project(env: ProvisionerEnvironment, project: str, command: str, additional_args=[], subprocess_args={}):
-    if not subprocess_args.get('env'):
-        subprocess_args["env"] = os.environ.copy()
-    
-    if project == "__all__":
-        subprocess_args["env"]["TERRAGRUNT_WORKING_DIR"] = str(env.PROV_CODE_DIR)
-        return run_terragrunt_generic(["run-all", command, "--terragrunt-exclude-dir=_*"] + additional_args, subprocess_args=subprocess_args)
-    else:
-        subprocess_args["env"]["TERRAGRUNT_WORKING_DIR"] = str(env.PROV_CODE_DIR / project)
-        return run_terragrunt_generic([command] + additional_args, subprocess_args=subprocess_args)
 
-def write_terragrunt_vars(env: ProvisionerEnvironment, project: str, vars_dict: dict):
-    vars_file = env.PROV_RUN_DIR / project / 'terraform.tfvars.json'
-    vars_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(vars_file, 'w') as f:
-        f.write(json.dumps(vars_dict, indent=2))
+def run_terragrunt_generic(args=None, subprocess_args=None):
+    return subprocess.run(
+        ["terragrunt"] + (args or []),
+        check=True,
+        **(subprocess_args or {}),
+    )
+
+
+def run_terragrunt_generic_with_project(
+    env: ProvisionerEnvironment,
+    project: str,
+    command: str,
+    additional_args=None,
+    subprocess_args=None,
+):
+    command_env = os.environ.copy()
+    if subprocess_args and subprocess_args.get("env"):
+        command_env = subprocess_args["env"]
+
+    args = additional_args or []
+    if project == "__all__":
+        command_env["TERRAGRUNT_WORKING_DIR"] = str(env.PROV_CODE_DIR)
+        command_args = [
+            "run-all",
+            command,
+            "--terragrunt-exclude-dir=_*",
+            *args,
+        ]
+    else:
+        command_env["TERRAGRUNT_WORKING_DIR"] = str(env.PROV_CODE_DIR / project)
+        command_args = [command, *args]
+
+    options = dict(subprocess_args or {})
+    options["env"] = command_env
+    return run_terragrunt_generic(command_args, options)
+
+
+def write_terragrunt_vars(
+    env: ProvisionerEnvironment,
+    project: str,
+    variables: dict,
+):
+    variables_file = env.PROV_RUN_DIR / project / "terraform.tfvars.json"
+    variables_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(variables_file, "w") as file:
+        json.dump(variables, file, indent=2)
+
 
 def run_terragrunt(
     tools: ProvisionerTools,
     project: str,
-    additional_init_args=[],
-    additional_plan_args=[],
-    additional_apply_args=[],
+    additional_init_args=None,
+    additional_plan_args=None,
+    additional_apply_args=None,
 ):
-    """
-    Run Terragrunt with the given project name. When `project` is `__all__`, run Terragrunt on all projects.
-    """
-    run_terragrunt_generic_with_project(tools.env, project, "init", additional_init_args)
+    run_terragrunt_generic_with_project(
+        tools.env,
+        project,
+        "init",
+        additional_init_args,
+    )
 
     if os.environ.get("DRY_RUN"):
-        run_terragrunt_generic_with_project(tools.env, project, "plan", additional_plan_args)
-    else:
-        no_confirm_args = ["--terragrunt-non-interactive", "-auto-approve"] if os.environ.get("NO_CONFIRM") else []
         run_terragrunt_generic_with_project(
             tools.env,
             project,
-            "apply",
-            additional_apply_args + no_confirm_args,
+            "plan",
+            additional_plan_args,
         )
+        return
 
-def import_preprovision_module(project: str, package: str):
-    try:
-        # Support both executing the top-level script directly (python path/to/script.py)
-        # and running it as a package (python -m path.to.script)
-        # - https://stackoverflow.com/a/49480246
-        # - https://stackoverflow.com/a/14132912
-        if package:
-            mod = importlib.import_module(f".{project}.preprovision", package)
-        else:
-            mod = importlib.import_module(f"{project}.preprovision")
-        return mod
-    except ModuleNotFoundError:
+    approval_args = (
+        ["--terragrunt-non-interactive", "-auto-approve"]
+        if os.environ.get("NO_CONFIRM")
+        else []
+    )
+    run_terragrunt_generic_with_project(
+        tools.env,
+        project,
+        "apply",
+        (additional_apply_args or []) + approval_args,
+    )
+
+
+def import_preprovision_module(script_path: Path, project: str):
+    module_path = script_path.parent / project / "preprovision.py"
+    if not module_path.is_file():
         return None
 
+    module_name = f"{script_path.parent.name}_{project}_preprovision".replace(
+        "-",
+        "_",
+    )
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if not spec or not spec.loader:
+        raise RuntimeError(f"Unable to load preprovision module: {module_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def make_terragrunt_command(
-    script_path,
-    project,
-    package,
-    get_global_vars_fn,
-    use_vault,
+    script_path: Path,
+    project: str,
+    get_global_vars,
 ):
-    """
-    Create a Terragrunt command function for a specific project.
-    """
-
     def command():
-        tools = init_environment(
-            script_path,
-            use_terragrunt=True,
-            use_vault=use_vault,
-        )
-        write_terragrunt_vars(tools.env, "", get_global_vars_fn(tools))
+        tools = init_environment(script_path, use_terragrunt=True)
+        write_terragrunt_vars(tools.env, "", get_global_vars(tools))
 
-        mod = import_preprovision_module(project, package)
-        if mod:
-            write_terragrunt_vars(tools.env, project, mod.get_vars(tools, project))
+        preprovision = import_preprovision_module(script_path, project)
+        if preprovision:
+            write_terragrunt_vars(
+                tools.env,
+                project,
+                preprovision.get_vars(tools, project),
+            )
 
-        run_terragrunt(tools=tools, project=project)
-
-        if not should_sync_output_state(tools):
-            return
-
-        # Get output
-        print("Checking whether to update output...")
-        res = run_terragrunt_generic_with_project(tools.env, project, "output", ["-json"], subprocess_args={'capture_output': True, 'text': True})
-        assert res.returncode == 0, f"Failed to get Terragrunt output for project '{project}': {res.stderr}"
-        output = next(extract_json_objects(res.stdout))
-        update_output(tools, output, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=os.environ.get("NO_CONFIRM") != "true")
-
-        if os.environ.get("BACK_UP_STATE"):
-            res = run_terragrunt_generic_with_project(tools.env, project, "state", ["pull"], subprocess_args={'capture_output': True, 'text': True})
-            assert res.returncode == 0, f"Failed to get Terragrunt state for project '{project}': {res.stderr}"
-            state = next(extract_json_objects(res.stdout))
-            back_up_state(tools, state, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=os.environ.get("NO_CONFIRM") != "true")
+        run_terragrunt(tools, project)
 
     return command
 
+
 def make_terragrunt_app(
     script_path: Path,
-    package: str,
-    get_global_vars_fn: callable,
-    use_vault: bool = True,
+    get_global_vars,
 ):
-    """
-    Create a Typer app for provisioning a Terragrunt project.
-    """
-
     app = get_app()
-
     projects = [
-        f.parent.name
-        for f in script_path.parent.glob("*/terragrunt.hcl")
-        if not f.parent.name.startswith("_")
+        file.parent.name
+        for file in script_path.parent.glob("*/terragrunt.hcl")
+        if not file.parent.name.startswith("_")
     ]
 
     for project in projects:
-        # Register projects with Typer
         app.command(name=project)(
             make_terragrunt_command(
                 script_path,
                 project,
-                package,
-                get_global_vars_fn,
-                use_vault,
+                get_global_vars,
             )
         )
 
     @app.command()
     def all():
-        tools = init_environment(
-            script_path,
-            use_terragrunt=True,
-            use_vault=use_vault,
-        )
-        write_terragrunt_vars(tools.env, "", get_global_vars_fn(tools))
+        tools = init_environment(script_path, use_terragrunt=True)
+        write_terragrunt_vars(tools.env, "", get_global_vars(tools))
 
-        # write vars for each project
         for project in projects:
-            mod = import_preprovision_module(project, package)
-            if mod:
-                write_terragrunt_vars(tools.env, project, mod.get_vars(tools, project))
+            preprovision = import_preprovision_module(script_path, project)
+            if preprovision:
+                write_terragrunt_vars(
+                    tools.env,
+                    project,
+                    preprovision.get_vars(tools, project),
+                )
 
-        run_terragrunt(tools=tools, project="__all__")
-
-        if not should_sync_output_state(tools):
-            return
-
-        outputs = {}
-        diffs = {}
-
-        # Get output
-        for project in projects:
-            print(f"Getting output for project '{project}'...")
-            res = run_terragrunt_generic_with_project(tools.env, project, "output", ["-json"], subprocess_args={'capture_output': True, 'text': True})
-            assert res.returncode == 0, f"Failed to get Terragrunt output for project '{project}': {res.stderr}"
-            output = next(extract_json_objects(res.stdout))
-            outputs[project] = output
-            diff = update_output(tools, output, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", dry_run=True)
-            if diff:
-                diffs[project] = diff
-
-        if len(diffs) > 0:
-            if os.environ.get("NO_CONFIRM") or typer.confirm("Do you want to apply the changes?"):
-                for project, diff in diffs.items():
-                    print(f"Applying output changes for project '{project}'...")
-                    update_output(tools, outputs[project], subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=False)
-            else:
-                print("Not applying output changes")
-
-        if os.environ.get("BACK_UP_STATE"):
-            states = {}
-            state_has_diffs = {}
-
-            for project in projects:
-                print(f"Getting state for project '{project}'...")
-
-                res = run_terragrunt_generic_with_project(tools.env, project, "state", ["pull"], subprocess_args={'capture_output': True, 'text': True})
-                assert res.returncode == 0, f"Failed to get Terragrunt state for project '{project}': {res.stderr}"
-                state = next(extract_json_objects(res.stdout))
-                states[project] = state
-                has_diff = back_up_state(tools, state, subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", dry_run=True)
-                state_has_diffs[project] = has_diff
-
-            if any(state_has_diffs.values()):
-                if os.environ.get("NO_CONFIRM") or typer.confirm("Do you want to back up the states?"):
-                    for project, has_diff in state_has_diffs.items():
-                        if has_diff:
-                            print(f"Backing up state for project '{project}'...")
-                            back_up_state(tools, states[project], subpath=f"{tools.env.PROV_PROJ_NAME}/{project}", confirm=False)
-                else:
-                    print("Not backing up states")
-
+        run_terragrunt(tools, "__all__")
 
     return app
-
-############################################
-# Output functions
-############################################
-
-Diff = namedtuple('Diff', ['added', 'removed', 'modified'])
-
-def get_output_diff(old_output: dict, new_output: dict):
-    added = {}
-    removed = {}
-    modified = {}
-
-    for key, value in new_output.items():
-        if key not in old_output:
-            added[key] = value
-        elif not deep_equal(old_output[key], value):
-            modified[key] = (old_output[key], value)
-        
-    for key in old_output.keys():
-        if key not in new_output:
-            removed[key] = old_output[key]
-    
-    return Diff(added=added, removed=removed, modified=modified)
-
-def print_diff(diff: Diff):
-    print("Output diff:")
-
-    if diff.added:
-        print("  Added:")
-        for key, value in diff.added.items():
-            if isinstance(value, dict) and value.get('sensitive'):
-                print(f"    {key}: <sensitive>")
-            else:
-                print(f"    {key}: {value}")
-    else:
-        print("  Added: None")
-    
-    if diff.removed:
-        print("  Removed:")
-        for key, value in diff.removed.items():
-            if isinstance(value, dict) and value.get('sensitive'):
-                print(f"    {key}: <sensitive>")
-            else:
-                print(f"    {key}: {value}")
-    else:
-        print("  Removed: None")
-    
-    if diff.modified:
-        print("  Modified:")
-        for key, (old_value, new_value) in diff.modified.items():
-            if isinstance(old_value, dict) and old_value.get('sensitive'):
-                old_value = "<sensitive>"
-            if isinstance(new_value, dict) and new_value.get('sensitive'):
-                new_value = "<sensitive>"
-
-            print(f"    {key}: {old_value} -> {new_value}")
-    else:
-        print("  Modified: None")
-
-def update_output(tools: ProvisionerTools, output: dict, subpath: str = None, confirm: bool = True, dry_run: bool = False):
-    if not subpath:
-        subpath = tools.env.PROV_PROJ_NAME
-
-    try:
-        existing_output = tools.vault_client.secrets.kv.v2.read_secret(f'outputs/{subpath}')['data']['data']
-    except hvac.exceptions.InvalidPath:
-        existing_output = {}
-
-    diff = get_output_diff(existing_output, output)
-
-    if not diff.added and not diff.removed and not diff.modified:
-        print("No changes to output")
-        return None
-
-    print_diff(diff)
-
-    if dry_run:
-        return diff
-
-    if confirm and not typer.confirm("Do you want to update the output (may require elevated permissions)?"):
-        return diff
-
-    print("Applying output changes...")
-
-    tools.vault_client.secrets.kv.v2.create_or_update_secret(
-        path=f"outputs/{subpath}",
-        secret=dict(output),
-    )
-
-    return diff
-
-def back_up_state(tools: ProvisionerTools, state: dict, subpath: str = None, confirm: bool = True, dry_run: bool = False):
-    if not subpath:
-        subpath = tools.env.PROV_PROJ_NAME
-
-    try:
-        existing_state = tools.vault_client.secrets.kv.v2.read_secret(f'states/{subpath}')['data']['data']
-    except hvac.exceptions.InvalidPath:
-        existing_state = {}
-
-    if deep_equal(existing_state, state):
-        print("No state changes")
-        return False
-
-    print("Detected state changes")
-
-    if dry_run:
-        return True
-
-    if confirm and not typer.confirm("Do you want to back up the state?"):
-        return True
-    
-    print("Backing up state changes...")
-
-    tools.vault_client.secrets.kv.v2.create_or_update_secret(
-        path=f"states/{subpath}",
-        secret=dict(state),
-    )

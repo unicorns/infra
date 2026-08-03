@@ -122,6 +122,13 @@ resource "kubernetes_deployment_v1" "gate_controller" {
       }
 
       spec {
+        toleration {
+          key      = "kubernetes.azure.com/scalesetpriority"
+          operator = "Equal"
+          value    = "spot"
+          effect   = "NoSchedule"
+        }
+
         container {
           name              = local.app_name
           image             = var.image

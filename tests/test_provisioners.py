@@ -1,0 +1,106 @@
+import os
+import stat
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from azure import provision as azure_provision
+from common.provisioner_utils import import_preprovision_module
+
+
+class AzureProvisionerTests(unittest.TestCase):
+    def test_requires_all_azure_credentials(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "ARM_SUBSCRIPTION_ID/AZURE_SUBSCRIPTION_ID",
+            ):
+                azure_provision.get_tf_vars()
+
+    def test_reads_credentials_and_admin_ids(self):
+        environment = {
+            "ARM_SUBSCRIPTION_ID": "subscription",
+            "ARM_CLIENT_ID": "client",
+            "ARM_TENANT_ID": "tenant",
+            "ARM_CLIENT_SECRET": "secret",
+            "AZURE_KEY_VAULT_ADMIN_OBJECT_IDS": "first, second",
+        }
+
+        with mock.patch.dict(os.environ, environment, clear=True):
+            self.assertEqual(
+                azure_provision.get_tf_vars(),
+                {
+                    "subscription_id": "subscription",
+                    "app_client_id": "client",
+                    "app_tenant_id": "tenant",
+                    "app_client_secret": "secret",
+                    "key_vault_admin_object_ids": ["first", "second"],
+                },
+            )
+
+    def test_writes_downstream_outputs(self):
+        outputs = {
+            "aks_cluster_name": {"value": "cluster"},
+            "key_vault_name": {"value": "key-vault"},
+            "key_vault_tenant_id": {"value": "tenant"},
+            "aks_key_vault_secret_provider_client_id": {"value": "identity"},
+            "ingress_static_ip": {"value": "192.0.2.1"},
+            "aks_kube_config": {"value": "kubeconfig"},
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            output_directory = Path(directory)
+            kubeconfig_path = output_directory / "kubeconfig"
+            env_path = output_directory / "azure.env"
+            with (
+                mock.patch.object(
+                    azure_provision,
+                    "OUTPUTS_DIR",
+                    output_directory,
+                ),
+                mock.patch.object(
+                    azure_provision,
+                    "KUBECONFIG_PATH",
+                    kubeconfig_path,
+                ),
+                mock.patch.object(azure_provision, "ENV_PATH", env_path),
+            ):
+                azure_provision.write_stack_outputs(outputs)
+
+            self.assertEqual(kubeconfig_path.read_text(), "kubeconfig")
+            self.assertEqual(
+                stat.S_IMODE(kubeconfig_path.stat().st_mode),
+                0o600,
+            )
+            self.assertEqual(
+                env_path.read_text().splitlines(),
+                [
+                    "AKS_CLUSTER_NAME=cluster",
+                    "AZURE_KEY_VAULT_NAME=key-vault",
+                    "KEY_VAULT_TENANT_ID=tenant",
+                    "KEY_VAULT_SECRET_PROVIDER_CLIENT_ID=identity",
+                    "INGRESS_EXTERNAL_IP=192.0.2.1",
+                    "GATE_CONTROLLER_ORIGIN_IP=192.0.2.1",
+                    "KUBE_CONFIG_PATH=./outputs/unicorns-aks-kubeconfig",
+                ],
+            )
+
+
+class KubernetesProvisionerTests(unittest.TestCase):
+    def test_gate_image_is_required(self):
+        module = import_preprovision_module(
+            Path("kubernetes-shared/provision.py"),
+            "gate-controller-cloud-v3",
+        )
+
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "GATE_CONTROLLER_CLOUD_V3_IMAGE",
+            ):
+                module.get_vars(None, "gate-controller-cloud-v3")
+
+
+if __name__ == "__main__":
+    unittest.main()

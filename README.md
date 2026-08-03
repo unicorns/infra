@@ -1,37 +1,40 @@
-# Infrastructure Configuration
+# Unicorns Infrastructure
 
-```bash
-git fetch \
-&& docker compose build provisioner \
-&& docker compose run --rm provisioner /bin/bash
+This repository provisions the infrastructure for the gate controller:
+
+- `azure`: one shared AKS cluster, Azure Key Vault, a static ingress IP, and
+  capped Azure Monitor logs
+- `cloudflare`: the public DNS record for the gate controller
+- `kubernetes-shared`: ingress, kube-state-metrics, reloader, and the gate
+  controller workload
+
+Terraform Cloud stores state. Runtime application secrets live in Azure Key
+Vault and are mounted into the gate-controller pod by the AKS Secrets Store CSI
+driver. The T-RG spot VM is outside this repository's management boundary.
+
+See [docs/aks-shared-stack.md](docs/aks-shared-stack.md) for provisioning and
+operations.
+
+## Provisioner
+
+Build and open the provisioner container:
+
+```sh
+docker compose build provisioner
+docker compose run --rm provisioner /bin/bash
 ```
 
-## Architecture
+Provisioners require `TF_TOKEN_app_terraform_io`. The Azure provisioner also
+requires the four standard `ARM_*` service-principal variables, the Cloudflare
+provisioner requires `CLOUDFLARE_API_TOKEN`, and the Kubernetes provisioner
+requires `GATE_CONTROLLER_CLOUD_V3_IMAGE`.
 
-This repository contains various provisioners. The provisioners depend on the following services:
-- [Azure Key Vault](https://azure.microsoft.com/products/key-vault): For runtime application secrets.
-- [Terraform Cloud](https://app.terraform.io): For state management. This is managed by HashiCorp.
-
-The current low-cost app hosting target is a single shared AKS cluster, Azure Key
-Vault, and capped Azure Monitor logs. See [docs/aks-shared-stack.md](docs/aks-shared-stack.md).
-
-## Provisioner environment variables
-
-- `DRY_RUN`: If set to a non-empty value, provisioners will not apply changes. This is useful for testing. Default is empty (apply changes).
-- `NO_CONFIRM`: If set to a non-empty value, provisioners will not ask for confirmation before applying changes. This is useful in CI. Default is empty (ask for confirmation).
-- `BACK_UP_STATE`: If set to a non-empty value, supported provisioners will back up state files after applying changes. Default is empty (do not back up state files).
-
-## Users
-
-Users can be created by an administrator by adding a record into the `users` kv2 mount and then running the `users` provisioner.
+Set `DRY_RUN` to run Terraform plans instead of applies. Set `NO_CONFIRM` to
+pass automatic approval during an apply.
 
 ## Secrets
 
-Runtime application secrets live in Azure Key Vault. The shared AKS stack uses
-the Azure Key Vault Secrets Store CSI add-on so pods can read secrets without
-putting secret values in Terraform state.
-
-To set the gate-controller secrets:
+Set the gate-controller secrets directly in Azure Key Vault:
 
 ```sh
 az keyvault secret set \
@@ -49,50 +52,3 @@ az keyvault secret set \
   --name gate-controller-cloud-v3-openai-api-key \
   --value 'replace-this'
 ```
-
-## Legacy Vault
-
-The old stack hosted [HashiCorp Vault](https://www.vaultproject.io/) on AKS.
-Those utilities remain for migration and state recovery, but new runtime app
-secrets should use Azure Key Vault.
-
-To put a secret into Vault:
-
-```sh
-./vault/vault_utils.py put-secret path/to/secret '{"mykey1": "mysecret1", "mykey2": "mysecret2"}'
-```
-
-To get a secret from Vault:
-
-```sh
-./vault/vault_utils.py --output-format=json get-secret path/to/secret 
-# Output:
-# {
-#     "mykey1": "mysecret1",
-#     "mykey2": "mysecret2"
-# }
-```
-
-To get a specific key from a secret:
-
-```sh
-./vault/vault_utils.py --output-format=json get-secret path/to/secret --key mykey1
-# Output:
-# "mysecret1"
-./vault/vault_utils.py --output-format=raw get-secret path/to/secret --key mykey1
-# Output (raw, useful for using secrets in scripts):
-# mysecret1
-```
-
-To delete a secret:
-
-```sh
-./vault/vault_utils.py delete-secret path/to/secret
-```
-
-If the Vault server restarts, we will need to unseal the server. This can be done by running:
-```sh
-./vault/vault_utils.py unseal <unseal-key1> [unseal-key2] [unseal-key3]
-```
-
-The vault is configured to require 3 unseal keys. They can be provided in different invocations of the command.
