@@ -90,3 +90,6 @@ Each application needs a one-time platform registration:
 
 Applications should use a dedicated Key Vault and AKS workload identity for
 runtime secrets. Secret values must not pass through GitHub Actions.
+
+Follow [Deploy a satellite application](satellite-app-deployment.md) for the
+one-time permission setup and application-owned release procedure.

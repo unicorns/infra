@@ -10,7 +10,9 @@ release pipelines belong in their application repositories. This repository may
 include examples, but it does not deploy personal applications.
 
 See [docs/aks-shared-stack.md](docs/aks-shared-stack.md) for provisioning and
-operations.
+operations. See
+[docs/satellite-app-deployment.md](docs/satellite-app-deployment.md) to onboard
+and deploy an application from its own repository.
 
 ## Provisioner
 
