@@ -17,6 +17,10 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 4.25.0"
     }
+    tfe = {
+      source  = "hashicorp/tfe"
+      version = "~> 0.79.0"
+    }
   }
 }
 
@@ -37,6 +41,11 @@ variable "app_client_secret" {
   type      = string
   sensitive = true
   default   = null
+}
+
+variable "terraform_cloud_token" {
+  type      = string
+  sensitive = true
 }
 
 variable "location" {
@@ -122,6 +131,10 @@ provider "azapi" {
   client_secret   = var.app_client_secret
 
   enable_preflight = true
+}
+
+provider "tfe" {
+  token = var.terraform_cloud_token
 }
 
 data "azurerm_client_config" "current" {}
