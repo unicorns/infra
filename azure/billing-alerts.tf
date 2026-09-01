@@ -112,6 +112,8 @@ data "azapi_resource" "weekly_credit_runway_view" {
   name      = "weekly-credit-runway-costs"
   parent_id = local.billing_profile_id
 
+  ignore_not_found = true
+
   response_export_values = {
     etag = "eTag"
   }
@@ -122,59 +124,63 @@ resource "azapi_resource" "weekly_credit_runway_view" {
   name      = "weekly-credit-runway-costs"
   parent_id = local.billing_profile_id
 
-  body = {
-    eTag = data.azapi_resource.weekly_credit_runway_view.output.etag
-    properties = {
-      accumulated = "true"
-      chart       = "Area"
-      displayName = "Weekly credit runway costs"
-      kpis = [
-        {
-          enabled = true
-          type    = "Forecast"
-        },
-        {
-          enabled = true
-          id      = azapi_resource.monthly_sustainable_spend.id
-          type    = "Budget"
-        },
-      ]
-      metric = "ActualCost"
-      pivots = [
-        {
-          name = "SubscriptionName"
-          type = "Dimension"
-        },
-        {
-          name = "ServiceName"
-          type = "Dimension"
-        },
-        {
-          name = "ResourceGroupName"
-          type = "Dimension"
-        },
-      ]
-      query = {
-        type      = "Usage"
-        timeframe = "MonthToDate"
-        dataSet = {
-          aggregation = {
-            totalCost = {
-              function = "Sum"
-              name     = "Cost"
+  body = merge(
+    data.azapi_resource.weekly_credit_runway_view.exists ? {
+      eTag = data.azapi_resource.weekly_credit_runway_view.output.etag
+    } : {},
+    {
+      properties = {
+        accumulated = "true"
+        chart       = "Area"
+        displayName = "Weekly credit runway costs"
+        kpis = [
+          {
+            enabled = true
+            type    = "Forecast"
+          },
+          {
+            enabled = true
+            id      = azapi_resource.monthly_sustainable_spend.id
+            type    = "Budget"
+          },
+        ]
+        metric = "ActualCost"
+        pivots = [
+          {
+            name = "SubscriptionName"
+            type = "Dimension"
+          },
+          {
+            name = "ServiceName"
+            type = "Dimension"
+          },
+          {
+            name = "ResourceGroupName"
+            type = "Dimension"
+          },
+        ]
+        query = {
+          type      = "Usage"
+          timeframe = "MonthToDate"
+          dataSet = {
+            aggregation = {
+              totalCost = {
+                function = "Sum"
+                name     = "Cost"
+              }
             }
+            granularity = "Daily"
+            sorting = [
+              {
+                direction = "Ascending"
+                name      = "UsageDate"
+              },
+            ]
           }
-          granularity = "Daily"
-          sorting = [
-            {
-              direction = "Ascending"
-              name      = "UsageDate"
-            },
-          ]
         }
       }
-    }
-  }
+    },
+  )
 
   lifecycle {
     prevent_destroy = true
