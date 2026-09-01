@@ -106,12 +106,24 @@ resource "azapi_resource" "sponsorship_credit_runway" {
   }
 }
 
+# Cost Management requires the latest eTag in every view update request.
+data "azapi_resource" "weekly_credit_runway_view" {
+  type      = "Microsoft.CostManagement/views@2025-03-01"
+  name      = "weekly-credit-runway-costs"
+  parent_id = local.billing_profile_id
+
+  response_export_values = {
+    etag = "eTag"
+  }
+}
+
 resource "azapi_resource" "weekly_credit_runway_view" {
   type      = "Microsoft.CostManagement/views@2025-03-01"
   name      = "weekly-credit-runway-costs"
   parent_id = local.billing_profile_id
 
   body = {
+    eTag = data.azapi_resource.weekly_credit_runway_view.output.etag
     properties = {
       accumulated = "true"
       chart       = "Area"
