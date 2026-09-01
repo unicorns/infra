@@ -26,6 +26,9 @@ The shared ingress and cluster should be reused for applications.
 Application-specific databases, disks, traffic, and log volume add to this
 baseline.
 
+Subscription-wide cost anomalies and billing-profile budgets provide native
+spend and credit-runway alerts. See [Azure billing alerts](azure-billing-alerts.md).
+
 ## Provisioning
 
 1. Export credentials and required configuration.

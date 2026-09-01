@@ -2,7 +2,8 @@
 
 This repository provisions the shared platform used by applications:
 
-- `azure`: AKS, Azure Key Vault, a static ingress IP, and capped Azure Monitor logs
+- `azure`: AKS, Azure Key Vault, a static ingress IP, capped Azure Monitor logs,
+  and billing-profile cost alerts
 - `kubernetes-shared`: ingress-nginx, kube-state-metrics, and reloader
 
 Terraform Cloud stores state. Application workloads, runtime configuration, and
@@ -12,7 +13,9 @@ include examples, but it does not deploy personal applications.
 See [docs/aks-shared-stack.md](docs/aks-shared-stack.md) for provisioning and
 operations. See
 [docs/satellite-app-deployment.md](docs/satellite-app-deployment.md) to onboard
-and deploy an application from its own repository.
+and deploy an application from its own repository. See
+[docs/azure-billing-alerts.md](docs/azure-billing-alerts.md) for the native cost
+guardrails and grant-renewal procedure.
 
 ## Provisioner
 
