@@ -114,13 +114,17 @@ the federated credential.
 Normal release: merge to the default branch. Checks pass, the image is
 published, and the app deploys and verifies its exact commit automatically.
 
-Rollback: create a temporary `rollback/*` branch at a previously successful
-commit, then run the deployment workflow and select that branch under **Use
-workflow from**. Delete the branch after the deployment succeeds.
+Private application rollback selects a previously approved image digest through
+the protected default-branch workflow and retains the `tailnet` ingress.
+
+For the public reference app, create a temporary `rollback/*` branch at a
+previously successful commit, then run the deployment workflow and select that
+branch under **Use workflow from**. Delete the branch after deployment succeeds.
 
 ```sh
 git push origin <full-sha>:refs/heads/rollback/<name>
 git push origin --delete rollback/<name>
 ```
 
-The selected commit supplies both the application and its deployment strategy.
+The public reference app's selected commit supplies both the application and
+its deployment strategy.
