@@ -16,7 +16,7 @@ ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Install requirements
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl git jq openssh-client python3-pip unzip wget \
+    && apt-get install -y --no-install-recommends ca-certificates curl git jq python3-pip unzip wget \
     && rm -rf /var/lib/apt/lists/*
 
 ARG TERRAFORM_VERSION=1.8.2
@@ -52,12 +52,6 @@ RUN wget --quiet "https://github.com/Azure/kubelogin/releases/download/v${KUBELO
 
 # This tells /bin/sh to source an environment file on startup
 ENV ENV=/etc/profile
-
-# Add "start SSH agent if not started" to the startup script
-RUN echo '[ ! -f ~/.ssh-agent-env ] && ssh-agent > ~/.ssh-agent-env; source ~/.ssh-agent-env' >> /etc/profile.d/ssh-agent.sh
-
-# Add a flag to the startup script to indicate that the profile has been initialized
-RUN echo 'export PROFILE_INITIALIZED=1' >> /etc/profile.d/profile-initialized.sh
 
 # Because we're running as root, we need to set the umask to 0000
 # so that any files created by the container are writable outside

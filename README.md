@@ -4,7 +4,9 @@ This repository provisions the shared platform used by applications:
 
 - `azure`: AKS, Azure Key Vault, a static ingress IP, capped Azure Monitor logs,
   and billing-profile cost alerts
-- `kubernetes-shared`: ingress-nginx, kube-state-metrics, and reloader
+- `kubernetes-shared`: public ingress-nginx, private Traefik over Tailscale,
+  wildcard DNS and certificate renewal, satellite admission policies,
+  kube-state-metrics, and reloader
 
 Terraform Cloud stores state. Application workloads, runtime configuration, and
 release pipelines belong in their application repositories. This repository may
@@ -29,6 +31,12 @@ docker compose run --rm provisioner /bin/bash
 Provisioning requires `TF_TOKEN_app_terraform_io`, the four standard `ARM_*`
 service-principal variables, `AZURE_KEY_VAULT_ADMIN_OBJECT_IDS`, and
 `AZURE_AKS_ADMIN_GROUP_OBJECT_IDS`.
+
+Private ingress also requires `PRIVATE_INGRESS_ACME_EMAIL`,
+`CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_API_TOKEN`, `TAILSCALE_CLIENT_ID`, and
+`TAILSCALE_AUDIENCE`. The Tailscale values identify the operator's workload
+identity registration. Cloudflare authentication uses the provider environment
+and an out-of-band Kubernetes Secret; its token does not enter Terraform state.
 
 The Azure stack also declaratively owns application-state workspaces in HCP
 Terraform. The provisioner passes `TF_TOKEN_app_terraform_io` as a sensitive,

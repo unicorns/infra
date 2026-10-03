@@ -17,7 +17,10 @@ A platform operator creates:
   namespace Role and RoleBinding containing only the resources the app deploys;
 - a GitHub `production` environment restricted to the default branch and
   `rollback/*`, with the Azure and app variables used by the workflow;
-- a DNS record pointing the app hostname at the shared ingress IP; and
+- for a public application, a DNS record pointing its hostname at the public
+  shared ingress IP;
+- for a private application's CI, a Tailscale federated identity bound to its
+  exact production environment and immutable repository and owner IDs; and
 - for runtime secrets, a dedicated Key Vault and a separate AKS workload
   identity with only **Key Vault Secrets User** access.
 
@@ -28,7 +31,8 @@ The operator needs these permissions while registering the app:
 | Azure | Owner, or Contributor plus User Access Administrator, on the AKS resource group |
 | AKS | Cluster administrator, used only to create the namespace and its RBAC |
 | GitHub | Repository administrator, to configure the environment, branch policy, and variables |
-| DNS | Permission to create the application record |
+| DNS | Permission to create a public application record |
+| Tailscale | Permission to register a private application's federated CI identity |
 | Key Vault | Key Vault Secrets Officer when populating or rotating runtime secrets |
 
 The application workflow itself receives only `contents: read` and
@@ -59,6 +63,20 @@ The shared admission policy requires namespace-local ClusterIP Services and
 explicit `nginx` or `tailnet` Ingress rules for `<namespace>.benzhang.dev`.
 Applications use platform TLS and cannot set a default backend, resource
 backend, external Service address, or arbitrary ingress annotations.
+
+Private applications use `ingressClassName: tailnet`. The shared DNS-only
+`*.benzhang.dev` record resolves to the private gateway, and Traefik provides a
+trusted wildcard certificate. No application DNS record, certificate Secret,
+or DNS publication annotation is needed. An existing exact DNS record overrides
+the wildcard; remove it only after private TLS and application checks pass.
+
+Private CI uses the shared `tag:unicorns-private-ci` with an `auth_keys` scope.
+Each repository keeps its own exact production federated identity, so it can
+be revoked independently. Its deployment job joins Tailscale to verify the
+application over the private gateway. The platform owns the shared tag and
+gateway policy; application bootstrap does not edit tailnet policy.
+The explicit CI grant covers TCP 443 on that gateway. Effective network access
+also includes other tailnet rules, which platform bootstrap preserves.
 
 Populate the dedicated Key Vault out of band before the first deployment. The
 bootstrap should set only non-secret GitHub environment variables. Remove the
@@ -96,13 +114,17 @@ the federated credential.
 Normal release: merge to the default branch. Checks pass, the image is
 published, and the app deploys and verifies its exact commit automatically.
 
-Rollback: create a temporary `rollback/*` branch at a previously successful
-commit, then run the deployment workflow and select that branch under **Use
-workflow from**. Delete the branch after the deployment succeeds.
+Private application rollback selects a previously approved image digest through
+the protected default-branch workflow and retains the `tailnet` ingress.
+
+For the public reference app, create a temporary `rollback/*` branch at a
+previously successful commit, then run the deployment workflow and select that
+branch under **Use workflow from**. Delete the branch after deployment succeeds.
 
 ```sh
 git push origin <full-sha>:refs/heads/rollback/<name>
 git push origin --delete rollback/<name>
 ```
 
-The selected commit supplies both the application and its deployment strategy.
+The public reference app's selected commit supplies both the application and
+its deployment strategy.
