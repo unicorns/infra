@@ -33,7 +33,8 @@ resource "azurerm_kubernetes_cluster" "shared" {
   }
 
   oms_agent {
-    log_analytics_workspace_id = azurerm_log_analytics_workspace.shared.id
+    log_analytics_workspace_id      = azurerm_log_analytics_workspace.shared.id
+    msi_auth_for_monitoring_enabled = true
   }
 
   key_vault_secrets_provider {
