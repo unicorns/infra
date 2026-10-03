@@ -15,8 +15,9 @@ A platform operator creates:
   `repo:<owner>/<repo>:environment:production`;
 - the **Azure Kubernetes Service Cluster User Role** for that identity, plus a
   namespace Role and RoleBinding containing only the resources the app deploys;
-- a GitHub `production` environment restricted to the default branch and
-  `rollback/*`, with the Azure and app variables used by the workflow;
+- a GitHub `production` environment restricted to the default branch, with
+  the Azure and app variables used by the workflow; the public reference app
+  additionally permits `rollback/*` for its source-based rollback procedure;
 - for a public application, a DNS record pointing its hostname at the public
   shared ingress IP;
 - for a private application's CI, a Tailscale federated identity bound to its
