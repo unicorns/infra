@@ -60,7 +60,7 @@ variable "name_prefix" {
 
 variable "aks_kubernetes_version" {
   type    = string
-  default = "1.34.8"
+  default = "1.35.7"
 }
 
 variable "aks_system_vm_size" {

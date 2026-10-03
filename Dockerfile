@@ -1,4 +1,4 @@
-FROM registry.k8s.io/kubectl:v1.34.8 AS kubectl
+FROM registry.k8s.io/kubectl:v1.35.7 AS kubectl
 
 # This stage is used to keep the cache valid across different systems (even when the file permissions change).
 # Use this stage as a courier to copy files from the build context to the image.
