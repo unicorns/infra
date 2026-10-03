@@ -26,6 +26,11 @@ PROVISION_JOBS = [
             "ARM_CLIENT_SECRET": "${{ secrets.ARM_CLIENT_SECRET }}",
             "AZURE_KEY_VAULT_ADMIN_OBJECT_IDS": "${{ vars.AZURE_KEY_VAULT_ADMIN_OBJECT_IDS }}",
             "AZURE_AKS_ADMIN_GROUP_OBJECT_IDS": "${{ vars.AZURE_AKS_ADMIN_GROUP_OBJECT_IDS }}",
+            "PRIVATE_INGRESS_ACME_EMAIL": "${{ vars.PRIVATE_INGRESS_ACME_EMAIL }}",
+            "CLOUDFLARE_ZONE_ID": "${{ vars.CLOUDFLARE_ZONE_ID }}",
+            "CLOUDFLARE_API_TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}",
+            "TAILSCALE_CLIENT_ID": "${{ vars.TAILSCALE_CLIENT_ID }}",
+            "TAILSCALE_AUDIENCE": "${{ vars.TAILSCALE_AUDIENCE }}",
         },
     },
 ]

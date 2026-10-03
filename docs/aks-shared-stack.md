@@ -2,10 +2,11 @@
 
 ## Ownership boundary
 
-This repository owns the shared platform: AKS, node pools, ingress-nginx,
-monitoring, the Secrets Store CSI add-on, the shared Key Vault, and the static
-ingress IP. Application repositories own their namespace-level workloads and
-CI/CD pipelines.
+This repository owns the shared platform: AKS, node pools, public ingress-nginx,
+private Traefik over Tailscale, wildcard DNS and certificate renewal, monitoring,
+the Secrets Store CSI add-on, the shared Key Vault, and the static public ingress
+IP. Application repositories own their namespace-level workloads and CI/CD
+pipelines.
 
 Application access uses Microsoft Entra authentication and namespace-scoped
 Kubernetes RBAC. Local AKS accounts are disabled. Never give an application
@@ -20,6 +21,7 @@ The stack limits its fixed Azure footprint to:
 - one optional autoscaling spot pool with `min_count = 0` and a
   `0.02 USD/hour` maximum price
 - one `32 GB` managed OS disk per active node
+- one `1 GiB` managed disk for the private gateway's ACME certificate state
 - Log Analytics capped at `0.25 GB/day`
 
 The shared ingress and cluster should be reused for applications.
@@ -41,6 +43,11 @@ spend and credit-runway alerts. See [Azure billing alerts](azure-billing-alerts.
    export ARM_CLIENT_SECRET="..."
    export AZURE_KEY_VAULT_ADMIN_OBJECT_IDS="..."
    export AZURE_AKS_ADMIN_GROUP_OBJECT_IDS="..."
+   export PRIVATE_INGRESS_ACME_EMAIL="..."
+   export CLOUDFLARE_ZONE_ID="..."
+   export CLOUDFLARE_API_TOKEN="..."
+   export TAILSCALE_CLIENT_ID="..."
+   export TAILSCALE_AUDIENCE="..."
    ```
 
    Before the first Entra-enabled apply, create the AKS administrator group,
@@ -80,11 +87,51 @@ spend and credit-runway alerts. See [Azure billing alerts](azure-billing-alerts.
 Set `DRY_RUN=1` before these commands to plan without applying changes. GitHub
 Actions performs the same sequence.
 
+## Private ingress
+
+Register the operator with a temporary administrator API token saved in a
+local file with mode `0600`. Run one platform bootstrap at a time:
+
+```sh
+python3 kubernetes-shared/bootstrap-private-ingress.py \
+  --api-token-file <token-file> \
+  --subscription "$ARM_SUBSCRIPTION_ID" \
+  --tailnet <connected-tailnet-name>
+```
+
+Store the returned `TAILSCALE_CLIENT_ID` and `TAILSCALE_AUDIENCE` as GitHub
+repository variables. They are not secrets. The helper verifies the connected
+tailnet and AKS resource, checks current-device access, and validates CI denial
+tests before updating policy. It replaces the default allow-all source with
+members, shared users, and declared machine tags excluding CI. New machine tags
+need an explicit access grant. Other policy rules, SSH settings, and node
+attributes are preserved. Revoke the temporary token after registrations.
+
+The private platform uses three pods: the Tailscale operator, one shared
+Tailscale proxy, and one Traefik gateway. The operator authenticates through
+its Kubernetes ServiceAccount's workload identity. The gateway exposes only
+TCP 443 through Tailscale, with no public load balancer or node ports.
+
+Terraform protects the gateway Service, the DNS-only wildcard record, and the
+certificate volume against deletion. The wildcard's address comes from the
+actual Service status and must be exactly one Tailscale IPv4 address. Named
+public records retain precedence over the wildcard.
+
+Traefik renews `*.benzhang.dev` with Cloudflare DNS challenges and stores the
+ACME account and certificates on its volume. Its single replica uses Recreate
+updates so only one process writes that state. Gateway or proxy restarts can
+briefly interrupt private requests.
+
+Proxy and node replacements retain the Tailscale Service address. Deleting
+the Kubernetes gateway Service also deletes its tailnet Service. If a Service
+is deleted outside Terraform, reapply infrastructure to recreate it and update
+the wildcard to its replacement address. DNS has a 60-second TTL.
+
 ## Application onboarding
 
 Each application needs a one-time platform registration:
 
-- a namespace;
+- a namespace labeled `unicorns.dev/satellite=true`;
 - a Microsoft Entra deployment identity federated to its protected GitHub
   environment;
 - the AKS Cluster User role so it can retrieve a user kubeconfig; and

@@ -17,6 +17,7 @@ services:
       # Terragrunt copies provider locks from its cache after initialization.
       - ./kubernetes-shared/kube-state-metrics/.terraform.lock.hcl:/${COMPOSE_PROJECT_NAME:?}/kubernetes-shared/kube-state-metrics/.terraform.lock.hcl:rw
       - ./kubernetes-shared/system/.terraform.lock.hcl:/${COMPOSE_PROJECT_NAME:?}/kubernetes-shared/system/.terraform.lock.hcl:rw
+      - ./kubernetes-shared/private-ingress/.terraform.lock.hcl:/${COMPOSE_PROJECT_NAME:?}/kubernetes-shared/private-ingress/.terraform.lock.hcl:rw
     tmpfs:
       - /run:exec
       - /tmp:exec
@@ -47,4 +48,9 @@ services:
       KUBECONFIG: ${KUBECONFIG:-}
       INGRESS_EXTERNAL_IP: ${INGRESS_EXTERNAL_IP:-}
       AKS_INGRESS_EXTERNAL_IP: ${AKS_INGRESS_EXTERNAL_IP:-}
+      PRIVATE_INGRESS_ACME_EMAIL: ${PRIVATE_INGRESS_ACME_EMAIL:-}
+      CLOUDFLARE_ZONE_ID: ${CLOUDFLARE_ZONE_ID:-}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
+      TAILSCALE_CLIENT_ID: ${TAILSCALE_CLIENT_ID:-}
+      TAILSCALE_AUDIENCE: ${TAILSCALE_AUDIENCE:-}
       CI: ${CI:-}
