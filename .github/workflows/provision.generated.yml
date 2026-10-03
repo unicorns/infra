@@ -1,4 +1,6 @@
 name: Provision
+permissions:
+  contents: read
 "on":
   push:
     branches:
@@ -13,13 +15,9 @@ jobs:
   update-workflow:
     needs: []
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
-        with:
-          ssh-key: ${{ secrets.DEPLOY_KEY }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0
       - name: Build the provisioner
@@ -36,26 +34,7 @@ jobs:
       - name: Update workflow
         run: |
           docker compose run --rm provisioner /bin/bash -c 'set -o pipefail; ./common/workflow_utils.py generate-provision-workflow .github/workflows/provision.jsonnet | yq --prettyPrint > /tmp/provision.generated.yml && mv /tmp/provision.generated.yml .github/workflows/provision.generated.yml'
-      - name: Create PR if there are changes
-        id: create_pr
-        uses: peter-evans/create-pull-request@6d6857d36972b65feb161a90e484f2984215f83e
-        with:
-          base: ${{ github.head_ref || github.ref_name }}
-          branch: auto-update-${{ github.head_ref || github.ref_name }}
-          title: '[Auto] Update from CI'
-          body: |
-            This PR was automatically created by the CI pipeline.
-
-            Workflow: `${{ github.workflow }}`
-            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
-            Source: ${{ github.ref }}
-          commit-message: '[Auto] Update from CI'
-      - name: Fail if there are changes
-        if: ${{ steps.create_pr.outputs.pull-request-number }}
-        run: |
-          echo "Changes are required. Please refer to pull request #${{ steps.create_pr.outputs.pull-request-number }}"
-          echo "Pull Request URL - ${{ steps.create_pr.outputs.pull-request-url }}"
-          exit 1
+          git diff --exit-code -- .github/workflows/provision.generated.yml
   provision-infrastructure:
     needs:
       - update-workflow
@@ -71,7 +50,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
-        with: {}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0
       - name: Build the provisioner

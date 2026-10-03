@@ -10,7 +10,7 @@ as the working reference.
 
 A platform operator creates:
 
-- a dedicated Kubernetes namespace;
+- a dedicated Kubernetes namespace labeled `unicorns.dev/satellite=true`;
 - a deployment managed identity federated to
   `repo:<owner>/<repo>:environment:production`;
 - the **Azure Kubernetes Service Cluster User Role** for that identity, plus a
@@ -47,6 +47,18 @@ namespace, hostname, and secret names, then run it once:
 az bicep install
 ./deploy/bootstrap/bootstrap.sh
 ```
+
+The bootstrap must apply the satellite label with its cluster administrator
+credential before handing the namespace to the deployment identity:
+
+```sh
+kubectl label namespace <namespace> unicorns.dev/satellite=true --overwrite
+```
+
+The shared admission policy requires namespace-local ClusterIP Services and
+explicit `nginx` or `tailnet` Ingress rules for `<namespace>.benzhang.dev`.
+Applications use platform TLS and cannot set a default backend, resource
+backend, external Service address, or arbitrary ingress annotations.
 
 Populate the dedicated Key Vault out of band before the first deployment. The
 bootstrap should set only non-secret GitHub environment variables. Remove the
