@@ -130,7 +130,7 @@ resource "azapi_resource" "weekly_credit_runway_view" {
     } : {},
     {
       properties = {
-        accumulated = "true"
+        accumulated = "True"
         chart       = "Area"
         displayName = "Weekly credit runway costs"
         kpis = [
