@@ -103,7 +103,7 @@ def run_terraform_plan(env: ProvisionerEnvironment, additional_args=None):
     return run_terraform_generic_with_var_files(
         env,
         "plan",
-        ["-lock-timeout=20m", "-refresh=false"] + (additional_args or []),
+        ["-lock-timeout=20m"] + (additional_args or []),
     )
 
 

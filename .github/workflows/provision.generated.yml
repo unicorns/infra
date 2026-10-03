@@ -24,6 +24,8 @@ jobs:
         uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0
       - name: Build the provisioner
         run: docker compose build provisioner
+      - name: Test provisioners
+        run: docker compose run --rm provisioner python3 -m unittest discover -s tests -v
       - name: Set up environment variables
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
@@ -74,6 +76,8 @@ jobs:
         uses: docker/setup-buildx-action@be3701b2116d2f723573ca9e8cdb4ca85d3cdaf0
       - name: Build the provisioner
         run: docker compose build provisioner
+      - name: Test provisioners
+        run: docker compose run --rm provisioner python3 -m unittest discover -s tests -v
       - name: Set up environment variables
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then

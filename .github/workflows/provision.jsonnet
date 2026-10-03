@@ -18,6 +18,10 @@ local common_init_steps(actions_checkout_options={}) = [
     run: 'docker compose build provisioner',
   },
   {
+    name: 'Test provisioners',
+    run: 'docker compose run --rm provisioner python3 -m unittest discover -s tests -v',
+  },
+  {
     name: 'Set up environment variables',
     run: |||
       if [ "${{ github.ref_name }}" = "main" ]; then

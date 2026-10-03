@@ -19,13 +19,13 @@ resource "helm_release" "reloader" {
       reloadStrategy: annotations
       deployment:
         replicas: 1
-      resources:
-        requests:
-          cpu: 10m
-          memory: 64Mi
-        limits:
-          cpu: 100m
-          memory: 128Mi
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
   EOF
   ]
 }
