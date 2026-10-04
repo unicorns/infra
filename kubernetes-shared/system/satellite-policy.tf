@@ -1,5 +1,15 @@
 locals {
   satellite_admission_rules = {
+    pod = {
+      apiGroups = [""]
+      resources = ["pods"]
+      validations = [
+        {
+          expression = "has(object.spec.nodeSelector) && 'kubernetes.azure.com/mode' in object.spec.nodeSelector && object.spec.nodeSelector['kubernetes.azure.com/mode'] == 'user'"
+          message    = "Satellite Pods must select AKS user nodes to protect system capacity."
+        }
+      ]
+    }
     ingress = {
       apiGroups = ["networking.k8s.io"]
       resources = ["ingresses"]
