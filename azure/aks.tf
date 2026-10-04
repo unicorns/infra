@@ -1,3 +1,10 @@
+locals {
+  application_spot_node_labels = {
+    "unicorns.dev/workload"                 = "applications"
+    "kubernetes.azure.com/scalesetpriority" = "spot"
+  }
+}
+
 resource "azurerm_kubernetes_cluster" "shared" {
   name                = local.aks_name
   location            = azurerm_resource_group.shared.location
@@ -76,6 +83,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot" {
   orchestrator_version  = var.aks_kubernetes_version
   vm_size               = var.aks_spot_vm_size
   max_pods              = 30
+  node_labels           = local.application_spot_node_labels
 
   os_disk_size_gb   = 32
   os_disk_type      = "Managed"
@@ -101,6 +109,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "alternate_spot" {
   orchestrator_version  = var.aks_kubernetes_version
   vm_size               = var.aks_alternate_spot_vm_size
   max_pods              = 30
+  node_labels           = local.application_spot_node_labels
 
   os_disk_size_gb   = 32
   os_disk_type      = "Managed"
