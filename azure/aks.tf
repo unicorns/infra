@@ -47,6 +47,7 @@ resource "azurerm_kubernetes_cluster" "shared" {
   }
 
   auto_scaler_profile {
+    expander                      = "priority"
     skip_nodes_with_local_storage = false
     skip_nodes_with_system_pods   = false
   }
@@ -88,8 +89,31 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot" {
   ]
 
   auto_scaling_enabled = true
-  min_count            = 0
+  min_count            = 1
   max_count            = 2
+}
+
+resource "azurerm_kubernetes_cluster_node_pool" "backup" {
+  count = var.enable_spot_node_pool ? 1 : 0
+
+  name                  = "appbackup"
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.shared.id
+  orchestrator_version  = var.aks_kubernetes_version
+  vm_size               = "Standard_B2ps_v2"
+  max_pods              = 30
+
+  os_disk_size_gb   = 32
+  os_disk_type      = "Managed"
+  kubelet_disk_type = "OS"
+
+  auto_scaling_enabled = true
+  min_count            = 0
+  max_count            = 1
+  node_count           = 0
+
+  lifecycle {
+    ignore_changes = [node_count]
+  }
 }
 
 output "aks_cluster_name" {
