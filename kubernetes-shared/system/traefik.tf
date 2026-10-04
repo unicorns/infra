@@ -67,7 +67,15 @@ resource "helm_release" "public_traefik" {
         transport        = { respondingTimeouts = { readTimeout = local.public_request_timeout } }
       }
     }
-    service      = { spec = { type = "ClusterIP" } }
+    service = {
+      annotations = {
+        "service.beta.kubernetes.io/azure-load-balancer-ipv4" = var.ingress_external_ip
+      }
+      spec = {
+        type                  = "LoadBalancer"
+        externalTrafficPolicy = "Local"
+      }
+    }
     api          = { dashboard = false }
     ingressRoute = { dashboard = { enabled = false } }
     resources = {
@@ -75,4 +83,11 @@ resource "helm_release" "public_traefik" {
       limits   = { memory = "256Mi" }
     }
   })]
+
+  lifecycle {
+    precondition {
+      condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$", var.ingress_external_ip)) && can(cidrhost("${var.ingress_external_ip}/32", 0))
+      error_message = "The public gateway requires the platform's static IPv4 address."
+    }
+  }
 }

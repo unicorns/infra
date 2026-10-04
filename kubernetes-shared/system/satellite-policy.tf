@@ -5,8 +5,8 @@ locals {
       resources = ["ingresses"]
       validations = [
         {
-          expression = "has(object.spec.ingressClassName) && object.spec.ingressClassName in ['nginx', 'public', 'tailnet']"
-          message    = "Satellite Ingresses must use the nginx, public, or tailnet class."
+          expression = "has(object.spec.ingressClassName) && object.spec.ingressClassName in ['public', 'tailnet']"
+          message    = "Satellite Ingresses must use the public or tailnet class."
         },
         {
           expression = "has(object.spec.rules) && size(object.spec.rules) > 0 && object.spec.rules.all(rule, has(rule.host) && rule.host == request.namespace + '.benzhang.dev')"
@@ -21,15 +21,8 @@ locals {
           message    = "Satellite Ingresses must use explicit host rules and platform TLS."
         },
         {
-          expression = <<-CEL
-            !has(object.metadata.annotations) || object.metadata.annotations.all(key, key in [
-              'nginx.ingress.kubernetes.io/proxy-read-timeout',
-              'nginx.ingress.kubernetes.io/proxy-send-timeout',
-              'nginx.ingress.kubernetes.io/proxy-buffering',
-              'kubectl.kubernetes.io/last-applied-configuration'
-            ])
-          CEL
-          message    = "Satellite Ingress annotations are limited to proxy timeouts, buffering, and kubectl metadata."
+          expression = "!has(object.metadata.annotations) || object.metadata.annotations.all(key, key == 'kubectl.kubernetes.io/last-applied-configuration')"
+          message    = "Satellite Ingress annotations are limited to kubectl metadata; the platform owns gateway configuration."
         }
       ]
     }
