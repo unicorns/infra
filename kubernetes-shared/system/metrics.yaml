@@ -1,0 +1,89 @@
+rbac:
+  create: false
+serviceAccount:
+  name: metrics
+server:
+  fullnameOverride: metrics
+  retentionPeriod: 30d
+  persistentVolume:
+    existingClaim: metrics-data
+  nodeSelector:
+    kubernetes.azure.com/mode: system
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 384Mi
+  env:
+    - name: GOMEMLIMIT
+      value: 256MiB
+  extraArgs:
+    memory.allowedBytes: 64MiB
+    storage.minFreeDiskSpaceBytes: 512MiB
+    search.maxConcurrentRequests: 2
+  securityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [ALL]
+    readOnlyRootFilesystem: true
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 2000
+  ingress:
+    enabled: true
+    ingressClassName: tailnet
+    hosts:
+      - name: metrics.benzhang.dev
+        path: [/]
+        port: http
+  scrape:
+    enabled: true
+    config:
+      global:
+        scrape_interval: 30s
+        scrape_timeout: 10s
+      scrape_configs:
+        - job_name: kube-state-metrics
+          static_configs:
+            - targets: [kube-state-metrics.kube-state-metrics.svc:8080]
+        - job_name: victoriametrics
+          static_configs:
+            - targets: [localhost:8428]
+        - job_name: victorialogs
+          static_configs:
+            - targets: [logs.observability.svc:9428]
+        - job_name: kubelet
+          scheme: https
+          tls_config:
+            ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          kubernetes_sd_configs:
+            - role: node
+          relabel_configs:
+            - target_label: __address__
+              replacement: kubernetes.default.svc:443
+            - source_labels: [__meta_kubernetes_node_name]
+              target_label: __metrics_path__
+              replacement: /api/v1/nodes/$1/proxy/metrics
+            - source_labels: [__meta_kubernetes_node_name]
+              target_label: node
+        - job_name: cadvisor
+          scheme: https
+          honor_timestamps: false
+          tls_config:
+            ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          kubernetes_sd_configs:
+            - role: node
+          relabel_configs:
+            - target_label: __address__
+              replacement: kubernetes.default.svc:443
+            - source_labels: [__meta_kubernetes_node_name]
+              target_label: __metrics_path__
+              replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+            - source_labels: [__meta_kubernetes_node_name]
+              target_label: node
