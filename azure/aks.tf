@@ -32,9 +32,8 @@ resource "azurerm_kubernetes_cluster" "shared" {
     type = "SystemAssigned"
   }
 
-  oms_agent {
-    log_analytics_workspace_id      = azurerm_log_analytics_workspace.shared.id
-    msi_auth_for_monitoring_enabled = true
+  storage_profile {
+    file_driver_enabled = false
   }
 
   key_vault_secrets_provider {
