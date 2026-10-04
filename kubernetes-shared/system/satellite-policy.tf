@@ -7,6 +7,10 @@ locals {
         {
           expression = "has(object.spec.nodeSelector) && (('unicorns.dev/workload' in object.spec.nodeSelector && object.spec.nodeSelector['unicorns.dev/workload'] == 'applications') || ('kubernetes.azure.com/mode' in object.spec.nodeSelector && object.spec.nodeSelector['kubernetes.azure.com/mode'] == 'user'))"
           message    = "Satellite Pods must select application nodes to protect system capacity."
+        },
+        {
+          expression = "request.operation != 'CREATE' || !has(object.spec.nodeName) || object.spec.nodeName == ''"
+          message    = "Satellite Pods must use the scheduler and cannot set nodeName at creation."
         }
       ]
     }
