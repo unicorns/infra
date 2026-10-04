@@ -88,6 +88,11 @@ variable "aks_spot_vm_size" {
   default = "Standard_D2ps_v6"
 }
 
+variable "aks_alternate_spot_vm_size" {
+  type    = string
+  default = "Standard_D2ps_v5"
+}
+
 variable "aks_spot_max_price" {
   type    = number
   default = 0.02

@@ -18,8 +18,8 @@ The stack limits its fixed Azure footprint to:
 
 - one `Standard_B2s` system node
 - one shared Standard Load Balancer and static public ingress IP
-- one optional autoscaling spot pool with `min_count = 0` and a
-  `0.02 USD/hour` maximum price
+- two optional ARM Spot pools with `min_count = 0` and a
+  `0.02 USD/hour` maximum price per node
 - one `32 GB` managed OS disk per active node
 - one `1 GiB` managed disk for the private gateway's ACME certificate state
 - Log Analytics capped at `0.25 GB/day`
@@ -27,6 +27,13 @@ The stack limits its fixed Azure footprint to:
 The shared ingress and cluster should be reused for applications.
 Application-specific databases, disks, traffic, and log volume add to this
 baseline.
+
+The autoscaler prefers `appspot` (`Standard_D2ps_v6`, at most two nodes), then
+`appspotalt` (`Standard_D2ps_v5`, at most one node). Both sizes have two cores
+and 8 GB RAM. Empty pools can scale to zero. Alternate capacity remains in use
+while needed; applications are not restarted just to change VM generations.
+Applications require User nodes, so Spot shortages cannot move them onto the
+system node. Spot capacity can be unavailable for both sizes.
 
 Subscription-wide cost anomalies and billing-profile budgets provide native
 spend and credit-runway alerts. See [Azure billing alerts](azure-billing-alerts.md).
