@@ -48,5 +48,4 @@ locals {
   proxy_tag         = "tag:unicorns-private-ingress"
   cloudflare_secret = "cloudflare-api-token"
   acme_claim        = "private-traefik-acme"
-  traefik_image_tag = "v3.7.13"
 }
