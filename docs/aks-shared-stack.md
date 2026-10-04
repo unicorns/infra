@@ -2,7 +2,7 @@
 
 ## Ownership boundary
 
-This repository owns the shared platform: AKS, node pools, public ingress-nginx,
+This repository owns the shared platform: AKS, node pools, public Traefik,
 private Traefik over Tailscale, wildcard DNS and certificate renewal, monitoring,
 the Secrets Store CSI add-on, the shared Key Vault, and the static public ingress
 IP. Application repositories own their namespace-level workloads and CI/CD
@@ -128,6 +128,17 @@ is deleted outside Terraform, reapply infrastructure to recreate it and update
 the wildcard to its replacement address. DNS has a 60-second TTL.
 
 ## Application onboarding
+
+Public and private applications use separate Traefik gateways and explicit
+Ingress classes: `public` and `tailnet`. Both use the same pinned chart and
+image versions. Neither class is the cluster default.
+
+The public gateway is stateless and uses the platform's static Azure ingress
+IP. Cloudflare provides browser-facing HTTPS. The origin accepts HTTP and
+HTTPS, with no HTTP-to-HTTPS redirect. Only Cloudflare addresses are trusted
+for forwarded headers, and local load-balancer traffic preserves those source
+addresses. The platform sets a 180-second request-read and response-header
+allowance. Applications require no gateway-specific annotations.
 
 Each application needs a one-time platform registration:
 

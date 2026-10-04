@@ -4,7 +4,7 @@ This repository provisions the shared platform used by applications:
 
 - `azure`: AKS, Azure Key Vault, a static ingress IP, capped Azure Monitor logs,
   and billing-profile cost alerts
-- `kubernetes-shared`: public ingress-nginx, private Traefik over Tailscale,
+- `kubernetes-shared`: public Traefik, private Traefik over Tailscale,
   wildcard DNS and certificate renewal, satellite admission policies,
   kube-state-metrics, and reloader
 

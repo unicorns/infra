@@ -61,9 +61,14 @@ kubectl label namespace <namespace> unicorns.dev/satellite=true --overwrite
 ```
 
 The shared admission policy requires namespace-local ClusterIP Services and
-explicit `nginx` or `tailnet` Ingress rules for `<namespace>.benzhang.dev`.
+explicit `public` or `tailnet` Ingress rules for `<namespace>.benzhang.dev`.
 Applications use platform TLS and cannot set a default backend, resource
 backend, external Service address, or arbitrary ingress annotations.
+
+Public applications use `ingressClassName: public` and a proxied Cloudflare DNS
+record pointing to the shared public ingress IP. Cloudflare provides public
+HTTPS, and the shared Traefik gateway owns request timeouts. App manifests need
+no gateway-specific annotations.
 
 Private applications use `ingressClassName: tailnet`. The shared DNS-only
 `*.benzhang.dev` record resolves to the private gateway, and Traefik provides a
