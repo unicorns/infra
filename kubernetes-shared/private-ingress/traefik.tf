@@ -24,7 +24,7 @@ resource "helm_release" "traefik" {
   namespace  = local.namespace
   chart      = "traefik"
   repository = "https://traefik.github.io/charts"
-  version    = "41.6.1"
+  version    = local.traefik_chart_version
   atomic     = true
 
   values = [yamlencode({

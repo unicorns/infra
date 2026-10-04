@@ -5,8 +5,8 @@ locals {
       resources = ["ingresses"]
       validations = [
         {
-          expression = "has(object.spec.ingressClassName) && object.spec.ingressClassName in ['nginx', 'tailnet']"
-          message    = "Satellite Ingresses must use the nginx or tailnet class."
+          expression = "has(object.spec.ingressClassName) && object.spec.ingressClassName in ['nginx', 'public', 'tailnet']"
+          message    = "Satellite Ingresses must use the nginx, public, or tailnet class."
         },
         {
           expression = "has(object.spec.rules) && size(object.spec.rules) > 0 && object.spec.rules.all(rule, has(rule.host) && rule.host == request.namespace + '.benzhang.dev')"
