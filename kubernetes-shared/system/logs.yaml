@@ -1,0 +1,30 @@
+serviceAccount:
+  create: true
+  automountToken: false
+server:
+  fullnameOverride: logs
+  retentionPeriod: 7d
+  retentionDiskSpaceUsage: 3GiB
+  persistentVolume:
+    existingClaim: logs-data
+  nodeSelector:
+    kubernetes.azure.com/mode: system
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  env:
+    - name: GOMEMLIMIT
+      value: 192MiB
+  extraArgs:
+    memory.allowedBytes: 64MiB
+    search.maxConcurrentRequests: 2
+  ingress:
+    enabled: true
+    ingressClassName: tailnet
+    hosts:
+      - name: logs.benzhang.dev
+        path: [/]
+        port: http
