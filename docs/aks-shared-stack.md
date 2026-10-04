@@ -32,7 +32,8 @@ The autoscaler prefers `appspot` (`Standard_D2ps_v6`, at most two nodes), then
 `appspotalt` (`Standard_D2ps_v5`, at most one node). Both sizes have two cores
 and 8 GB RAM. Empty pools can scale to zero. Alternate capacity remains in use
 while needed; applications are not restarted just to change VM generations.
-Applications require User nodes, so Spot shortages cannot move them onto the
+User application pools carry `unicorns.dev/workload=applications`.
+Applications select this label, so Spot shortages cannot move them onto the
 system node. Spot capacity can be unavailable for both sizes.
 
 Subscription-wide cost anomalies and billing-profile budgets provide native

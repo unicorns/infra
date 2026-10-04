@@ -108,6 +108,14 @@ exists only to hand off the gate controller's legacy secrets.
   rollback.
 - Use the restricted Pod Security settings: non-root user, RuntimeDefault
   seccomp, no privilege escalation, and all Linux capabilities dropped.
+- Set `nodeSelector: {unicorns.dev/workload: applications}` on Deployments
+  and Jobs. The platform assigns this label only to User application pools,
+  allowing the autoscaler to provision them from zero while keeping system
+  nodes ineligible. Prefer Spot with node affinity and tolerate
+  `kubernetes.azure.com/scalesetpriority=spot:NoSchedule`.
+
+The admission guard also accepts an explicit AKS User-node selector. Use the
+platform application label for reliable scale-up from zero.
 
 Required non-secret `production` environment variables normally include the
 Azure tenant, subscription, resource group, cluster, deployment identity client
