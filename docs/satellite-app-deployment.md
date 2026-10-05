@@ -114,9 +114,6 @@ exists only to hand off the gate controller's legacy secrets.
   nodes ineligible. Prefer Spot with node affinity and tolerate
   `kubernetes.azure.com/scalesetpriority=spot:NoSchedule`.
 
-The admission guard also accepts an explicit AKS User-node selector. Use the
-platform application label for reliable scale-up from zero.
-
 Required non-secret `production` environment variables normally include the
 Azure tenant, subscription, resource group, cluster, deployment identity client
 ID, app URL, Key Vault name, and workload identity client ID. The workflow's

@@ -5,7 +5,7 @@ locals {
       resources = ["pods"]
       validations = [
         {
-          expression = "has(object.spec.nodeSelector) && (('unicorns.dev/workload' in object.spec.nodeSelector && object.spec.nodeSelector['unicorns.dev/workload'] == 'applications') || ('kubernetes.azure.com/mode' in object.spec.nodeSelector && object.spec.nodeSelector['kubernetes.azure.com/mode'] == 'user'))"
+          expression = "has(object.spec.nodeSelector) && 'unicorns.dev/workload' in object.spec.nodeSelector && object.spec.nodeSelector['unicorns.dev/workload'] == 'applications'"
           message    = "Satellite Pods must select application nodes to protect system capacity."
         },
         {
